@@ -1,0 +1,19 @@
+services:
+  fastapi_chat:  # Your service name
+    build: .  # Build from Dockerfile in current directory
+    ports:
+      - "8000:8000"  # Host:Container port mapping
+    volumes:
+      - .:/app  # Bind mount for development
+    environment:
+      - DEBUG=1
+    depends_on:
+      - redis
+
+  redis:  # Another service
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+
+volumes:  # Define persistent volumes
+  redis_data:
