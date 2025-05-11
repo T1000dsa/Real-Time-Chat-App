@@ -18,12 +18,10 @@ app = FastAPI()
 async def lifespan(app: FastAPI):
     dictConfig(LOG_CONFIG)
     logger = logging.getLogger(__name__)
-    logger.info("🚀 Starting app...")
     logger.info(settings)
     
     yield  # FastAPI handles requests here
 
-    logger.info("🛑 Shutting down...")
     try:
         await db_helper.dispose()
         logger.info("✅ Connection pool closed cleanly")

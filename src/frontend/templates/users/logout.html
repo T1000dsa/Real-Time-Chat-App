@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if user.is_authenticated %}
+    <form style="display:inline-block" method="POST" action="{% url 'users/logout.html' %}">
+    <button type="submit">Logout</button></form>
+    <li class="last">{{ user.username }}</li>
+{% endif %}
+{% endblock %}
