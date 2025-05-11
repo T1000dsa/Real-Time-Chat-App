@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="registration-form">
+    <form action="{{ template_action }}" method="post" enctype="multipart/form-data">
+        {{ error }}<br>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" value="{{ form_data.username }}" required><br><br>
+
+        <!-- Password Field -->
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" value="{{ form_data.password }}" required><br><br> 
+
+        <label for="password">Confirm Password:</label>
+        <input type="password" id="password_again" name="password_again" required><br><br>
+
+        <!-- Email Field -->
+        <label for="mail">Email (optional):</label>
+        <input type="text" id="mail" name="mail" value="{{ form_data.mail }}"><br><br>
+
+        <!-- Bio Field -->
+        <label for="bio">Bio (optional):</label>
+        <textarea id="bio" name="bio">{{ form_data.bio }}</textarea><br><br>
+
+        <button type="submit">Register</button>
+    </form>
+</div>
+{% endblock %}
