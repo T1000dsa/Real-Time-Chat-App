@@ -28,6 +28,10 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing connection pool: {e}")
 
+
+app = FastAPI(lifespan=lifespan, title='real-time chat proj')
+
+
 app.include_router(heath_router)
 app.include_router(main_router)
 

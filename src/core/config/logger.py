@@ -19,7 +19,7 @@ LOG_CONFIG = {
         # Apply to all loggers (including Uvicorn)
         "": {
             "handlers": ["console"],
-            "level": "INFO",
+            "level": "DEBUG",
             "propagate": False,
         },
     },
