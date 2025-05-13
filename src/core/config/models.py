@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, SecretStr
+from pydantic import BaseModel, field_validator, SecretStr, EmailStr
 
 class RunConfig(BaseModel):
     """
@@ -70,3 +70,15 @@ class DatabaseConfig(BaseModel):
         
         # Default case if database type is not recognized
         raise ValueError(f"Unsupported database type: {current_db}")
+    
+
+class Email_Settings(BaseModel):
+    # Email Configuration
+    EMAIL_ENABLED: bool = False
+    EMAIL_HOST: str = "smtp.gmail.com"
+    EMAIL_PORT: int = 587
+    EMAIL_USERNAME: str = ""
+    EMAIL_PASSWORD: str
+    EMAIL_FROM: EmailStr = ""
+    EMAIL_USE_TLS: bool = True
+    EMAIL_TIMEOUT: int = 10

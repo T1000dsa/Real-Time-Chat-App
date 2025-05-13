@@ -8,6 +8,7 @@ from src.core.config.models import (
     Mode, 
     DatabaseConfig, 
     RedisSettings, 
+    Email_Settings
     )
 
 
@@ -29,7 +30,7 @@ class Settings(BaseSettings):
     db: DatabaseConfig
     redis_settings: RedisSettings = RedisSettings()
     #elastic:ElasticSearch = ElasticSearch()
-    #email:Email_Settings = Email_Settings()
+    email:Email_Settings = Email_Settings()
 
 
 settings = Settings()
