@@ -1,31 +1,32 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from typing import Dict, List
 import logging
+
+from src.core.config.auth_config import oauth2_scheme
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: dict[str, WebSocket] = {}
+        self.active_connections: Dict[str, WebSocket] = {}
+        self.user_rooms: Dict[str, List[str]] = {}  # Track which rooms users are in
 
     async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
         self.active_connections[user_id] = websocket
 
-    def disconnect(self, user_id: str):
-        if user_id in self.active_connections:
-            del self.active_connections[user_id]
+    async def join_room(self, user_id: str, room_id: str):
+        if user_id not in self.user_rooms:
+            self.user_rooms[user_id] = []
+        self.user_rooms[user_id].append(room_id)
 
-    async def send_personal_message(self, message: str, user_id: str):
-        if user_id in self.active_connections:
-            await self.active_connections[user_id].send_text(message)
-
-    async def broadcast(self, message: str):
-        for connection in self.active_connections.values():
-            await connection.send_text(message)
+    async def broadcast_to_room(self, message: str, room_id: str, sender_id: str = None):
+        for user_id, rooms in self.user_rooms.items():
+            if room_id in rooms and user_id in self.active_connections:
+                if user_id != sender_id:  # Don't send back to sender
+                    await self.active_connections[user_id].send_text(message)
 
 manager = ConnectionManager()
 

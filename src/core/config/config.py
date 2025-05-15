@@ -8,7 +8,8 @@ from src.core.config.models import (
     Mode, 
     DatabaseConfig, 
     RedisSettings, 
-    Email_Settings
+    Email_Settings,
+    JwtConfig
     )
 
 
@@ -24,13 +25,23 @@ class Settings(BaseSettings):
         env_file_encoding='utf-8',
         extra='ignore'
     )
-    run: RunConfig = RunConfig()  # Keep defaults as fallback
+
+    # Run config
+    run: RunConfig
     prefix: Current_ApiPrefix = Current_ApiPrefix()
-    mode: Mode = Mode()
+    mode: Mode
+
+    # Services
     db: DatabaseConfig
-    redis_settings: RedisSettings = RedisSettings()
+    jwt:JwtConfig
+    redis: RedisSettings
+    email:Email_Settings
+
+    # API
+    #...
+
+
     #elastic:ElasticSearch = ElasticSearch()
-    email:Email_Settings = Email_Settings()
 
 
 settings = Settings()

@@ -10,9 +10,9 @@ class RunConfig(BaseModel):
 
 class ApiPrefix_V1(BaseModel):
     """
-    prefix:str default - /auth
+    prefix:str default - /v1
     """
-    prefix:str='/auth'
+    prefix:str='/v1'
 
 class Current_ApiPrefix(BaseModel):
     api_data:ApiPrefix_V1 = ApiPrefix_V1()
@@ -82,3 +82,10 @@ class Email_Settings(BaseModel):
     EMAIL_FROM: EmailStr = ""
     EMAIL_USE_TLS: bool = True
     EMAIL_TIMEOUT: int = 10
+
+
+class JwtConfig(BaseModel):
+    key:SecretStr = 'base_key'
+    algorithm:str = 'HS256'
+    ACCESS_TOKEN_EXPIRE_MINUTES:int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS:int = 7

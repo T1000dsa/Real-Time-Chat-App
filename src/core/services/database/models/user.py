@@ -6,7 +6,7 @@ from typing import Optional
 import logging
 import bcrypt
 
-from src.core.services.database.postgres.models.base import Base, int_pk, created_at, updated_at
+from src.core.services.database.models.base import Base, int_pk, created_at, updated_at
 
 
 logger = logging.getLogger(__name__)

@@ -6,8 +6,12 @@ from sqlalchemy import pool
 from alembic import context
 
 
-from src.core.services.database.postgres.models.base import Base
-from src.core.services.database.postgres.models.user import UserModel
+from src.core.services.database.models.base import Base
+from src.core.services.database.models.user import UserModel
+from src.core.services.database.models.refresh_token import RefreshTokenModel
+from src.core.services.database.models.chat import ChatRoom, Message, ChatParticipant
+# alembic revision --autogenerate -m "init"
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
