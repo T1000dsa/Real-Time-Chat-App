@@ -40,9 +40,12 @@ class Settings(BaseSettings):
     # API
     #...
 
-
     #elastic:ElasticSearch = ElasticSearch()
 
+    def is_prod(self):
+        if self.mode.mode == 'PROD':
+            return True
+        return False
 
 settings = Settings()
 if settings.mode.mode not in ('DEV', 'TEST'):

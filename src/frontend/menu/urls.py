@@ -17,5 +17,5 @@ def get_menu():
 def choice_from_menu(name:str=None):
     if name:
         for i in menu_items:
-            if name.lower() == i.title.lower() or name.lower() == i.url.lower():
+            if name.lower() == i.get('title').lower() or name.lower() == i.get('url').lower():
                 return i

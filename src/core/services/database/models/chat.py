@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import ForeignKey
 
 
 from .base import Base, int_pk, created_at
@@ -19,8 +20,8 @@ class Message(Base):
     __tablename__ = 'messages'
     
     id: Mapped[int_pk]
-    room_id: Mapped[int] = mapped_column(foreign_key="chat_rooms.id")
-    user_id: Mapped[int] = mapped_column(foreign_key="users.id")
+    room_id: Mapped[int] = mapped_column()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
     content: Mapped[str]
     created_at: Mapped[created_at]
     is_read: Mapped[bool] = mapped_column(default=False)
@@ -32,8 +33,8 @@ class ChatParticipant(Base):
     __tablename__ = 'chat_participants'
     
     id: Mapped[int_pk]
-    room_id: Mapped[int] = mapped_column(foreign_key="chat_rooms.id")
-    user_id: Mapped[int] = mapped_column(foreign_key="users.id")
+    room_id: Mapped[int] = mapped_column(ForeignKey("chat_rooms.id", ondelete='CASCADE'))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
     joined_at: Mapped[created_at]
     
     room: Mapped["ChatRoom"] = relationship(back_populates="participants")

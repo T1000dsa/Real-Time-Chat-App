@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Form
+from fastapi import APIRouter, Depends, HTTPException, Form, Query
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 from jose import JWTError
+from typing import Optional
 import logging
 
 from src.core.services.auth.token_service import TokenService
@@ -25,23 +26,32 @@ router = APIRouter(prefix=settings.prefix.api_data.prefix, tags=['auth'])
 
 @router.get("/login")
 async def html_login(
-    request:Request,
-    error:str|None = None
-    ):
-
+    request: Request,
+    errors: Optional[str] = None,
+    form_data:Optional[dict] = None
+):
+    logger.debug(f"Rendering login page with error: {errors}")
+    
     prepared_data = {
-        "title":"Sigh In",
-        "template_action":settings.prefix.api_data.prefix+'/login/process',
-        "error":error
-        }
+        "title": "Sign In",
+        "template_action": settings.prefix.api_data.prefix + '/login/process',
+        "errors": errors
+    }
+
+    add_data = {"request": request}
+    if form_data:
+        add_data.update({"form_data":form_data})
     
     template_response_body_data = await prepare_template(
         data=prepared_data,
-        additional_data={
-            "request":request
-        })
-
-    response = templates.TemplateResponse('users/login.html', template_response_body_data)
+        additional_data=add_data
+    )
+    
+    response = templates.TemplateResponse(
+        'users/login.html',
+        template_response_body_data
+    )
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     return response
 
 
@@ -51,15 +61,17 @@ async def login(
     form_data: form_scheme,
     auth_service: UserService = Depends(get_auth_service)
 ):
+    logger.debug(f"Login attempt for username: {form_data.username}")
 
     try:
         tokens = await auth_service.authenticate_user(
             username=form_data.username,
             password=form_data.password
         )
-        
-        if not tokens:
-            return await html_login(request=request, error='Invalid credentials')
+        if tokens is None:
+            logger.debug('Authentication failed - redirecting with error')
+            form_user_data = {'username':form_data.username, 'password':form_data.password}
+            return await html_login(request=request, errors='Invalid Creds', form_data=form_user_data)
         
         response = RedirectResponse(url='/', status_code=302)
         await auth_service.token_service.set_secure_cookies(
@@ -68,12 +80,14 @@ async def login(
             refresh_token=tokens[REFRESH_TYPE],
             csrf_token=tokens.get(CSRF_TYPE)
         )
-        
         return response
         
     except Exception as err:
         logger.error(f"Login failed: {err}")
-        return await html_login(request=request, error='Login failed')
+        return RedirectResponse(
+            url=f"{settings.prefix.api_data.prefix}/login?error=Login+failed",
+            status_code=303
+        )
 
 @router.get("/register")
 async def html_register(
@@ -103,8 +117,7 @@ async def register(
     username: str = Form(...),
     password: str = Form(...),
     password_again: str = Form(...),
-    mail: str = Form(""),
-    bio: str = Form("")
+    mail: str = Form("")
 ):
 
     logger.info('inside register')
@@ -113,8 +126,7 @@ async def register(
         username=username,
         password=password,
         password_again=password_again,
-        mail=mail,
-        bio=bio
+        mail=mail
     )
 
     user = auth_service

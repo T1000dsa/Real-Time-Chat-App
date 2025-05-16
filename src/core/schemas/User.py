@@ -6,8 +6,8 @@ class UserSchema(BaseModel):
     password:str
     password_again:str
 
-    public_name:Optional[str] = None
-    mail:Optional[str] = None
+    #public_name:Optional[str] = None
+    email:Optional[str] = None
 
     @model_validator(mode="after")
     def check_passwords_match(self):
