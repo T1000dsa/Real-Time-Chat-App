@@ -4,7 +4,7 @@ import logging
 from src.core.dependencies.db_injection import DBDI
 
 
-router = APIRouter()
+router = APIRouter(tags=['api'])
 logger = logging.getLogger(__name__)
 
 @router.get('/health')

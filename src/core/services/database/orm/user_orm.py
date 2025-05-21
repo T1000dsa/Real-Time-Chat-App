@@ -14,7 +14,6 @@ async def select_data_user_id(
         session: AsyncSession,
         user_id:int
         ) -> Optional[UserModel]:
-    logger.debug(f"{user_id=}")
     try:
         query = select(UserModel).where(UserModel.id == user_id)
         result = await session.execute(query)
@@ -74,7 +73,6 @@ async def insert_data(
     session: AsyncSession,
     data: User_pydantic = None
 ) -> None:
-    logger.debug(f'{type(data)}')
     try:
         if isinstance(data, User_pydantic):
             res = User_pydantic.model_validate(data, from_attributes=True)
@@ -125,3 +123,21 @@ async def get_all_users(session:AsyncSession):
     res = await session.execute(query)
     result = res.scalars().all()
     return result
+
+async def user_activate(session:AsyncSession, user_id:int, activate:bool):
+    query = select(UserModel).where(UserModel.id == user_id)
+    user = (await session.execute(query)).scalar_one_or_none()
+
+    if user is None:
+        raise ValueError(f"User with id {user_id} not found")
+    
+    user.is_active = activate
+    
+    # Commit the changes
+    await session.commit()
+    
+    # Refresh the user object if needed
+    await session.refresh(user)
+    
+    return user
+    

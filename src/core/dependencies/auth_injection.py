@@ -16,7 +16,7 @@ from src.core.config.auth_config import (
 
 async def get_token_service() -> TokenService:
     return TokenService(
-        secret_key=settings.jwt.key.get_secret_value(),
+        secret_key=settings.jwt.key,
         algorithm=settings.jwt.algorithm
     )
 
@@ -37,8 +37,8 @@ async def get_current_user(
         raise credentials_exception
     
     try:
-        payload = jwt.decode(token, settings.jwt.key.get_secret_value(), algorithms=[settings.jwt.algorithm])
-        user_id: int = payload.get("sub")  # Changed from "use" to standard "sub"
+        payload = jwt.decode(token, settings.jwt.key, algorithms=[settings.jwt.algorithm])
+        user_id: int = payload.get("sub")
         if user_id is None:
             raise credentials_exception
     except JWTError:
@@ -56,5 +56,7 @@ async def get_current_active_user(
         raise inactive_user_exception
     return current_user
 
-
+GET_TOKEN_SERVICE = Annotated[TokenService, Depends(get_token_service)]
+GET_AUTH_SERVICE = Annotated[UserService, Depends(get_auth_service)]
+GET_CURRENT_USER = Annotated[UserModel, Depends(get_current_user)]
 GET_CURRENT_ACTIVE_USER = Annotated[UserModel, Depends(get_current_active_user)]

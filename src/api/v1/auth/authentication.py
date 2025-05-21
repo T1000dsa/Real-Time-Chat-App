@@ -1,23 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, Form, status
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
-from jose import JWTError
-from typing import Optional
+from jose import JWTError, jwt
 import logging
 
-from src.core.services.auth.token_service import TokenService
-from src.core.services.auth.user_service import UserService
 from src.core.schemas.User import UserSchema
 from src.core.config.config import templates, settings
 from src.utils.prepared_response import prepare_template
 from src.core.dependencies.db_injection import DBDI
-from src.core.dependencies.auth_injection import get_token_service, get_auth_service, GET_CURRENT_ACTIVE_USER
+from src.frontend.menu.urls import choice_from_menu, menu_items
+from src.core.dependencies.auth_injection import GET_TOKEN_SERVICE, GET_CURRENT_ACTIVE_USER, GET_AUTH_SERVICE, GET_CURRENT_USER
 from src.core.config.auth_config import (
     ACCESS_TYPE, 
     REFRESH_TYPE,
     CSRF_TYPE, 
-    form_scheme
+    form_scheme,
+    oauth2_scheme
     )
 
 logger = logging.getLogger(__name__)
@@ -26,32 +25,25 @@ router = APIRouter(prefix=settings.prefix.api_data.prefix, tags=['auth'])
 
 @router.get("/login")
 async def html_login(
-    request: Request,
-    errors: Optional[str] = None,
-    form_data:Optional[dict] = None
-):
-    logger.debug(f"Rendering login page with error: {errors}")
-    
-    prepared_data = {
-        "title": "Sign In",
-        "template_action": settings.prefix.api_data.prefix + '/login/process',
-        "errors": errors
-    }
+    request:Request,
+    error:str|None = None
+    ):
 
-    add_data = {"request": request}
-    if form_data:
-        add_data.update({"form_data":form_data})
+    prepared_data = {
+        "title":"Sigh In",
+        "template_action":settings.prefix.api_data.prefix+'/login/process',
+        "error":error
+        }
     
     template_response_body_data = await prepare_template(
         data=prepared_data,
-        additional_data=add_data
-    )
-    
-    response = templates.TemplateResponse(
-        'users/login.html',
-        template_response_body_data
-    )
-    response.headers["Cache-Control"] = "no-store, max-age=0"
+        additional_data={
+            "request":request,
+            "menu_data":choice_from_menu,
+            "menu":menu_items
+        })
+
+    response = templates.TemplateResponse('users/login.html', template_response_body_data)
     return response
 
 
@@ -59,35 +51,27 @@ async def html_login(
 async def login(
     request: Request,
     form_data: form_scheme,
-    auth_service: UserService = Depends(get_auth_service)
+    auth_service: GET_AUTH_SERVICE
 ):
-    logger.debug(f"Login attempt for username: {form_data.username}")
-
     try:
         tokens = await auth_service.authenticate_user(
             username=form_data.username,
             password=form_data.password
         )
-        if tokens is None:
-            logger.debug('Authentication failed - redirecting with error')
-            form_user_data = {'username':form_data.username, 'password':form_data.password}
-            return await html_login(request=request, errors='Invalid Creds', form_data=form_user_data)
+        
+        if not tokens:
+            return await html_login(request=request, error='Invalid credentials')
         
         response = RedirectResponse(url='/', status_code=302)
         await auth_service.token_service.set_secure_cookies(
             response=response,
-            access_token=tokens[ACCESS_TYPE],
-            refresh_token=tokens[REFRESH_TYPE],
-            csrf_token=tokens.get(CSRF_TYPE)
+            tokens=tokens
         )
         return response
         
     except Exception as err:
         logger.error(f"Login failed: {err}")
-        return RedirectResponse(
-            url=f"{settings.prefix.api_data.prefix}/login?error=Login+failed",
-            status_code=303
-        )
+        return await html_login(request=request, error='Login failed')
 
 @router.get("/register")
 async def html_register(
@@ -103,7 +87,9 @@ async def html_register(
     template_response_body_data = await prepare_template(
         data=prepared_data,
         additional_data={
-            "request":request
+            "request":request,
+            "menu_data":choice_from_menu,
+            "menu":menu_items
         })
     
     response = templates.TemplateResponse('users/register.html', template_response_body_data)
@@ -112,21 +98,23 @@ async def html_register(
 @router.post("/register/process")
 async def register(
     request:Request,
-    session: DBDI,
-    auth_service: UserService = Depends(get_auth_service),
+    auth_service: GET_AUTH_SERVICE,
     username: str = Form(...),
     password: str = Form(...),
     password_again: str = Form(...),
-    mail: str = Form("")
+    mail: str = Form(""),
+    bio: str = Form("")
+    
 ):
 
-    logger.info('inside register')
+    logger.info(f'User: {username} tries to regist...')
 
     user_data = UserSchema(
         username=username,
         password=password,
         password_again=password_again,
-        mail=mail
+        mail=mail,
+        bio=bio
     )
 
     user = auth_service
@@ -150,7 +138,9 @@ async def register(
     template_response_body_data = await prepare_template(
         data=prepared_data,
         additional_data={
-            "request":request
+            "request":request,
+            "menu_data":choice_from_menu,
+            "menu":menu_items
         })
     return templates.TemplateResponse('users/register_success.html', template_response_body_data)
 
@@ -158,36 +148,25 @@ async def register(
 @router.get('/logout')
 async def logout(
     request: Request,
-    auth_service: UserService = Depends(get_auth_service)
+    auth_service: GET_AUTH_SERVICE
 ):
     response = RedirectResponse(url=router.prefix + "/login")
     
-    # Try to get token from cookies
-    token = request.cookies.get(ACCESS_TYPE)
+    try:
+        response = await auth_service.logout_user(request=request, response=response)
+    except (JWTError, ValueError) as e:
+        logger.debug(f"Token error during logout: {e}")
+    except Exception as e:
+        logger.debug(f"Unexpected error: {e}")
     
-    if token:
-        try:
-            await auth_service.logout_user(token, ACCESS_TYPE)
-        except (JWTError, ValueError) as e:
-            logger.debug(f"Token error during logout: {e}")
-    
-    # Delete cookies
-    for cookie_name in [ACCESS_TYPE, REFRESH_TYPE, CSRF_TYPE]:
-        response.delete_cookie(
-            cookie_name,
-            path="/",
-            domain=None,
-            secure=True,
-            httponly=True
-        )
     return response
 
 
-@router.post("/refresh")
+@router.post("/refresh") # need to rebuild
 async def refresh_tokens(
     request: Request,
     session: DBDI,
-    token_service: TokenService = Depends(get_token_service)
+    token_service: GET_TOKEN_SERVICE
 ):
     refresh_token = request.cookies.get(REFRESH_TYPE)
     if not refresh_token:
@@ -204,8 +183,6 @@ async def refresh_tokens(
     response = RedirectResponse(url='/', status_code=302)
     await token_service.set_secure_cookies(
         response=response,
-        access_token=new_tokens[ACCESS_TYPE],
-        refresh_token=new_tokens[REFRESH_TYPE],
-        csrf_token=new_tokens.get(CSRF_TYPE)
+        tokens=new_tokens
     )
     return response

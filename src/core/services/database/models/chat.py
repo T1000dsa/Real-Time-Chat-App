@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
-
 from .base import Base, int_pk, created_at
 from .user import UserModel
 
@@ -20,7 +19,7 @@ class Message(Base):
     __tablename__ = 'messages'
     
     id: Mapped[int_pk]
-    room_id: Mapped[int] = mapped_column()
+    room_id: Mapped[int] = mapped_column(ForeignKey("chat_rooms.id", ondelete='CASCADE'))  # Added ForeignKey
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete='CASCADE'))
     content: Mapped[str]
     created_at: Mapped[created_at]

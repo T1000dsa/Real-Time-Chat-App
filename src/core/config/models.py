@@ -77,9 +77,9 @@ class Email_Settings(BaseModel):
     EMAIL_ENABLED: bool = False
     EMAIL_HOST: str = "smtp.gmail.com"
     EMAIL_PORT: int = 587
-    EMAIL_USERNAME: str = ""
-    EMAIL_PASSWORD: str
-    EMAIL_FROM: EmailStr = ""
+    EMAIL_USERNAME: SecretStr = ""
+    EMAIL_PASSWORD: SecretStr
+    EMAIL_FROM: SecretStr = ""
     EMAIL_USE_TLS: bool = True
     EMAIL_TIMEOUT: int = 10
 

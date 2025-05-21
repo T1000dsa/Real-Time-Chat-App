@@ -109,26 +109,26 @@ async def delete_data(
     user_id:Optional[int]
 ) -> None:
     try:
-        if token and user_id: # 1 1
+        logger.debug('in delete_data')
+        if bool(token and user_id): # 1 1
+                logger.debug('bool(token and user_id)')
                 await session.execute(
                 delete(RefreshTokenModel)
                 .where(RefreshTokenModel.token == token and RefreshTokenModel.user_id == user_id))
                 await session.commit()
 
-        if token and not user_id: # 1 0
+        if bool(token and not user_id): # 1 0
                 await session.execute(
                 delete(RefreshTokenModel)
                 .where(RefreshTokenModel.token == token))
                 await session.commit()
             
-        if not token and user_id: # 0 1
+        if bool(not token and user_id): # 0 1
                 await session.execute(
                 delete(RefreshTokenModel)
                 .where(RefreshTokenModel.user_id == user_id))
                 await session.commit()
-        else:
-            logger.error('Invalid data type provided')
-            raise ValueError("Invalid data type provided")
+
 
     except ValueError as err:
         logger.error('Invalid data type provided')

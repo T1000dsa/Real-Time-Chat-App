@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+<title>{{ title }}</title>
+{% block content %}
+    <h1>{{ title }}</h1>
+    <div>
+        <input type="text" id="messageInput" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    <div id="output"></div>
+
+    <script>
+        const userId = "{{ user_id }}";
+        const wsUrl = "ws://{{ request.host }}{{ settings.prefix.api_data.prefix }}/ws/" + userId;
+        
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = function() {
+            console.log("WebSocket connection established");
+            
+            // Join a room automatically when connected
+            socket.send(JSON.stringify({
+                type: "join_room",
+                room_id: "room1"
+            }));
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const outputDiv = document.getElementById("output");
+            
+            if (data.type === "chat_message") {
+                outputDiv.innerHTML += `<p>${data.user_id}: ${data.content}</p>`;
+            } else if (data.type === "system") {
+                outputDiv.innerHTML += `<p class="system-message">${data.content}</p>`;
+            } else if (data.error) {
+                outputDiv.innerHTML += `<p class="error-message">Error: ${data.error}</p>`;
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = function() {
+            console.log("WebSocket connection closed");
+        };
+
+        function sendMessage() {
+            const messageInput = document.getElementById("messageInput");
+            const message = messageInput.value.trim();
+            
+            if (message) {
+                socket.send(JSON.stringify({
+                    type: "chat_message",
+                    room_id: "room1",
+                    content: message
+                }));
+                messageInput.value = "";
+            }
+        }
+    </script>
+{% endblock %}

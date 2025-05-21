@@ -1,6 +1,7 @@
 from jose import JWTError, jwt
 from secrets import token_urlsafe
-from fastapi import HTTPException, status, Response, Request
+from pydantic import SecretStr
+from fastapi import HTTPException, status, Response
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from typing import Optional
@@ -31,30 +32,39 @@ logger = logging.getLogger(__name__)
 class TokenService:
     def __init__(
         self, 
-        secret_key: str = settings.jwt.key.get_secret_value(),
+        secret_key: SecretStr = settings.jwt.key,
         algorithm: str = settings.jwt.algorithm,
         pwd: CryptContext = pwd_context
     ):
-        self.secret = secret_key
+        self.secret = secret_key.get_secret_value()
         self.algorithm = algorithm
         self.pwd_context = pwd
 
     async def generate_csrf_token(self) -> str:
         return token_urlsafe(32)
+    
+    async def verify_csrf(self, token: str, csrf:str) -> bool:
+        """Verify CSRF token from cookie matches header"""
+        
+        try:
+            payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
+            if payload.get("csrf") != csrf:
+                raise HTTPException(status_code=403, detail="CSRF token mismatch")
+            return True
+        except JWTError:
+            raise HTTPException(status_code=403, detail="Invalid token")
         
     async def create_token(self, data: dict, expires_delta: timedelta, token_type: str) -> str:
-        logger.debug("in create_token 1")
         """Base function for all tokens"""
+        logger.debug('In create_token coroutine')
         to_encode = data.copy()
         date_now = datetime.now(timezone.utc)
         expire = date_now + expires_delta
-
         to_encode.update({
             "exp": expire, 
             "type": token_type,
             "iat": date_now
         })
-        logger.debug("in create_token 4")
         return jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
     
     async def create_access_token(self, data: dict) -> str:
@@ -72,22 +82,28 @@ class TokenService:
         )
     
     async def create_both_tokens(self, data: dict) -> dict:
+        logger.debug("before generate_csrf_token")
         csrf_token = await self.generate_csrf_token()
         data_with_csrf = {**data, "csrf": csrf_token}
+        logger.debug(f"before create_access_token {data}")
+        access_token = await self.create_access_token(data_with_csrf)
+        logger.debug("before create_refresh_token")
+        refresh_token = await self.create_refresh_token(data_with_csrf)
 
         return {
-            ACCESS_TYPE: await self.create_access_token(data_with_csrf),
-            REFRESH_TYPE: await self.create_refresh_token(data_with_csrf),
+            ACCESS_TYPE: access_token,
+            REFRESH_TYPE: refresh_token,
             CSRF_TYPE: csrf_token
         }
 
-    def verify_token(self, token: str, token_type: str) -> dict:
+    async def verify_token(self, token: str, token_type: str) -> dict:
         """Generic token verification method"""
         try:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
             if payload.get("type") != token_type:
                 raise credentials_exception
             return payload
+        
         except JWTError:
             raise credentials_exception
     
@@ -210,10 +226,13 @@ class TokenService:
                 detail="Failed to store token"
             )
 
-    async def revoke_token(self, session: AsyncSession, token: Optional[str], user_id:Optional[int]) -> None:
+    async def revoke_token(self, session: AsyncSession, token: Optional[str]=None, user_id:Optional[int]=None) -> None:
         """Take token OR user_ir. If none of them provided, will raised ValueError("Invalid data type provided")"""
-        hashed_token = self.hash_token(token)
-        await delete_data(session, hashed_token, user_id)
+        logger.debug(f'{token=}')
+        if token:
+            token = self.hash_token(token)
+
+        await delete_data(session, token, user_id)
 
     async def revoke_all_user_tokens(self, session: AsyncSession, user_id: int) -> None:
         await delete_all_user_tokens(session, user_id)
@@ -221,11 +240,14 @@ class TokenService:
     async def set_secure_cookies(
         self,
         response: Response,
-        access_token: str,
-        refresh_token: str,
-        csrf_token: str = None
+        tokens:dict
     ) -> Response:
         """Set HTTP-only and secure cookies"""
+        
+        access_token = tokens.get(ACCESS_TYPE)
+        refresh_token = tokens.get(REFRESH_TYPE)
+        csrf_token = tokens.get(CSRF_TYPE)
+
         response.set_cookie(
             key=ACCESS_TYPE,
             value=access_token,
@@ -259,19 +281,5 @@ class TokenService:
             )
 
         return response
-    
-    async def verify_csrf(self, request: Request, token: str) -> bool:
-        """Verify CSRF token from cookie matches header"""
-        csrf_cookie = request.cookies.get("csrf_token")
-        if not csrf_cookie:
-            raise HTTPException(status_code=403, detail="CSRF token missing")
-        
-        try:
-            payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
-            if payload.get("csrf") != csrf_cookie:
-                raise HTTPException(status_code=403, detail="CSRF token mismatch")
-            return True
-        except JWTError:
-            raise HTTPException(status_code=403, detail="Invalid token")
 
 token_service = TokenService()
