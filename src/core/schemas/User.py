@@ -5,11 +5,9 @@ class UserSchema(BaseModel):
     username:str
     password:str
     password_again:str
-    is_active:bool
 
-    public_name:Optional[str]
-    mail:Optional[str]
-    bio:Optional[str]
+    #public_name:Optional[str] = None
+    email:Optional[str] = None
 
     @model_validator(mode="after")
     def check_passwords_match(self):

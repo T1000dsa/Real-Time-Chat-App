@@ -1,0 +1,27 @@
+{% for item in menu %}
+    {% if item.title=='Login' %}
+        {% if request.cookies.get('access')==None %}
+            <nav><a href="{{item.url}}">{{ item.title }}</a></nav>
+        {% endif %}
+
+
+    {% elif item.title=='Registration' %}
+        {% if request.cookies.get('access')==None %}
+            <nav><a href="{{item.url}}">{{ item.title }}</a></nav>
+        {% endif %}
+
+    {% elif item.title=='Logout' %}
+        {% if request.cookies.get('access') %}
+            <nav><a href="{{menu_data('Logout').url}}">Logout</a></nav>
+        {% endif %}
+
+    {% elif item.title=='Profile' %}
+        {% if request.cookies.get('access') %}
+            <nav><a href="{{menu_data('Profile').url}}">Profile</a></nav>
+        {% endif %}
+
+    {% else %}
+    <nav><a href="{{item.url}}">{{ item.title }}</a></nav>
+    {% endif %}
+{% endfor %}
+<nav><a href="https://github.com/T1000dsa">My GitHub</a></nav>

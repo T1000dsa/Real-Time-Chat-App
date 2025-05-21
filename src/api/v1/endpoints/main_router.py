@@ -7,15 +7,14 @@ from src.core.config.config import templates
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(tags=['api'])
 
 @router.get('/')
 async def index(
     request:Request
     ):
     prepared_data = {
-        "title":"Main page",
-        "content":"Welcome to my site!"
+        "title":"Main page"
         }
     
     add_data = {
