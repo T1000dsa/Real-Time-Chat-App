@@ -24,7 +24,7 @@ async def select_data(
     model_type: Union[RefreshToken, UserSchema] = RefreshToken
 ) -> Union[RefreshTokenModel, UserModel, None]:
     try:
-        logger.debug(f"Selecting data with token={token}, user_id={user_id}, model_type={model_type}")
+        #logger.debug(f"Selecting data with token={token}, user_id={user_id}, model_type={model_type}")
         
         if model_type == RefreshToken:
             stmt = select(RefreshTokenModel)
@@ -111,7 +111,6 @@ async def delete_data(
     try:
         logger.debug('in delete_data')
         if bool(token and user_id): # 1 1
-                logger.debug('bool(token and user_id)')
                 await session.execute(
                 delete(RefreshTokenModel)
                 .where(RefreshTokenModel.token == token and RefreshTokenModel.user_id == user_id))
@@ -141,8 +140,9 @@ async def delete_data(
 
 async def delete_all_user_tokens(
         session:AsyncSession,
-          data: UserModel
+          data: RefreshTokenModel
           ):
+    logger.debug(f'{data} {type(data)}')
     try:
         await session.execute(
                 delete(RefreshTokenModel)

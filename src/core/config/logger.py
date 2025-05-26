@@ -1,6 +1,6 @@
 LOG_CONFIG = {
     "version": 1,
-    "disable_existing_loggers": False,  # Important! Prevents FastAPI/Uvicorn from overriding
+    "disable_existing_loggers": True,  # Prevents duplicate logs
     "formatters": {
         "default": {
             "()": "logging.Formatter",
@@ -16,11 +16,22 @@ LOG_CONFIG = {
         },
     },
     "loggers": {
-        # Apply to all loggers (including Uvicorn)
-        "": {
+        # Your app's logs (adjust "src" to your root package name)
+        "src": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "DEBUG",  # Debug for your code
             "propagate": False,
         },
+        # Silence noisy libraries
+        "uvicorn.error": {"level": "WARNING"},
+        "uvicorn.access": {"level": "WARNING"},
+        "watchfiles": {"level": "ERROR"},
+        "passlib": {"level": "WARNING"},
+        "bcrypt": {"level": "WARNING"},
+    },
+    # Root logger (catch-all)
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",  # Only show INFO+ for unconfigured loggers
     },
 }

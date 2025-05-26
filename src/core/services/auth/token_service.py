@@ -1,7 +1,7 @@
 from jose import JWTError, jwt
 from secrets import token_urlsafe
 from pydantic import SecretStr
-from fastapi import HTTPException, status, Response
+from fastapi import HTTPException, status, Response, Request
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from typing import Optional
@@ -43,6 +43,23 @@ class TokenService:
     async def generate_csrf_token(self) -> str:
         return token_urlsafe(32)
     
+    async def token_expired(self, token:str, token_type:str) -> bool:
+        try:
+            payload = await self.verify_token(token, token_type)
+            date = datetime.fromtimestamp(payload.get('exp'))
+            date_now = datetime.now() # utc-0
+            logger.debug(f"{date} {date_now} {date_now >= date}")
+
+            if date_now >= date:
+                return True
+            else:
+                return False
+            
+        except JWTError as err:
+            logger.error(err)
+            return True
+
+    
     async def verify_csrf(self, token: str, csrf:str) -> bool:
         """Verify CSRF token from cookie matches header"""
         
@@ -60,6 +77,7 @@ class TokenService:
         to_encode = data.copy()
         date_now = datetime.now(timezone.utc)
         expire = date_now + expires_delta
+        logger.debug(f"{date_now=} {expire=}")
         to_encode.update({
             "exp": expire, 
             "type": token_type,
@@ -85,9 +103,8 @@ class TokenService:
         logger.debug("before generate_csrf_token")
         csrf_token = await self.generate_csrf_token()
         data_with_csrf = {**data, "csrf": csrf_token}
-        logger.debug(f"before create_access_token {data}")
+        logger.debug(f"before create tokens {data}")
         access_token = await self.create_access_token(data_with_csrf)
-        logger.debug("before create_refresh_token")
         refresh_token = await self.create_refresh_token(data_with_csrf)
 
         return {
@@ -95,17 +112,32 @@ class TokenService:
             REFRESH_TYPE: refresh_token,
             CSRF_TYPE: csrf_token
         }
+    
+    async def create_singular_token(self, data: dict, token_type:str) -> dict:
+        logger.debug(f"before create tokens {data}")
+
+        new_token = ''
+
+        if token_type == ACCESS_TYPE:
+            new_token = await self.create_access_token(data)
+        if token_type == REFRESH_TYPE:
+            new_token = await self.create_refresh_token(data)
+
+        return new_token
 
     async def verify_token(self, token: str, token_type: str) -> dict:
         """Generic token verification method"""
         try:
+            #logger.debug(f'before decode {self.secret}')
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
+            #logger.debug(payload)
             if payload.get("type") != token_type:
                 raise credentials_exception
             return payload
         
-        except JWTError:
-            raise credentials_exception
+        except JWTError as err:
+            logger.error(f'{err}')
+            raise err
     
     def hash_token(self, token: str) -> str:
         """Hash token before storage"""
@@ -120,7 +152,7 @@ class TokenService:
     async def rotate_tokens(
         self, 
         session: AsyncSession,
-        refresh_token: str
+        request: Request
     ) -> dict:
         """
         Full token rotation flow:
@@ -129,9 +161,13 @@ class TokenService:
         3. Create new tokens
         4. Revoke old token
         """
+        logger.debug(f'Trying to rotate tokens...')
         try:
             # 1. Verify token
-            payload = self.verify_token(refresh_token, REFRESH_TYPE)
+            access_token = request.cookies.get(ACCESS_TYPE)
+            refresh_token = request.cookies.get(REFRESH_TYPE)
+            csrf_token = request.cookies.get(CSRF_TYPE)
+            payload = await self.verify_token(refresh_token, REFRESH_TYPE)
             user_id = payload.get("sub")
             if not user_id:
                 raise HTTPException(
@@ -139,10 +175,14 @@ class TokenService:
                     detail="Invalid token payload"
                 )
             
-            # 2. Get existing token record
+            new_access_token = ''
+            hashed_new_token = ''
+            new_tokens = {}
+
             old_token_record = await select_data(
                 session,
                 token=refresh_token,  # Now passing raw token
+                user_id=user_id,
                 model_type=RefreshToken
             )
 
@@ -153,35 +193,46 @@ class TokenService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid refresh token"
                 )
-                
+            
             # Check if token was already revoked
             if old_token_record.revoked:
-                await self.revoke_all_user_tokens(session, user_id)
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Refresh token was reused"
-                )
+                await self.revoke_all_user_tokens(session, old_token_record)
+                logger.info(f'Token {old_token_record} already revoked')
+                #raise HTTPException(
+                #    status_code=status.HTTP_401_UNAUTHORIZED,
+                #    detail="Refresh token was reused"
+                #)
             
-            # 3. Create new tokens
-            new_tokens = await self.create_both_tokens({"sub": user_id})
-            hashed_new_token = self.hash_token(new_tokens[REFRESH_TYPE])
-            
-            # 4. Store new token and revoke old one
-            await insert_data(session, RefreshToken(
-                token=hashed_new_token,
-                user_id=user_id,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=settings.jwt.REFRESH_TOKEN_EXPIRE_DAYS),
-                replaced_by_token=hashed_new_token,
-                family_id=old_token_record.family_id,
-                device_info=old_token_record.device_info
-            ))
-            
-            # Revoke old token
+
+            if await self.token_expired(access_token, ACCESS_TYPE) and not await self.token_expired(refresh_token, REFRESH_TYPE): # Expired access token and non expired refresh token
+                data = {"sub": user_id, "csrf": csrf_token}
+                new_access_token = await self.create_singular_token(data, ACCESS_TYPE)
+
+            else:
+                if await self.token_expired(refresh_token, REFRESH_TYPE):
+                    new_tokens = await self.create_both_tokens({"sub": user_id})
+                    hashed_new_token = self.hash_token(new_tokens[REFRESH_TYPE])
+
+
             old_token_record.revoked = True
             old_token_record.replaced_by_token = hashed_new_token
-            await session.commit()
-            
-            return new_tokens
+
+            if new_access_token or new_tokens:
+                logger.debug('New tokens has been created successfully')
+            else:
+                logger.debug('Same tokens, no refresh happened')
+
+                    
+            if new_tokens:
+                await self.store_refresh_token(session, user_id, new_tokens[REFRESH_TYPE], old_token_record.id)
+                await session.commit()
+                return new_tokens
+            else:
+                return {
+                    ACCESS_TYPE:new_access_token if new_access_token else access_token,
+                    REFRESH_TYPE:refresh_token,
+                    CSRF_TYPE:csrf_token
+                    }
             
         except JWTError as e:
             raise HTTPException(
@@ -228,14 +279,13 @@ class TokenService:
 
     async def revoke_token(self, session: AsyncSession, token: Optional[str]=None, user_id:Optional[int]=None) -> None:
         """Take token OR user_ir. If none of them provided, will raised ValueError("Invalid data type provided")"""
-        logger.debug(f'{token=}')
         if token:
             token = self.hash_token(token)
 
         await delete_data(session, token, user_id)
 
-    async def revoke_all_user_tokens(self, session: AsyncSession, user_id: int) -> None:
-        await delete_all_user_tokens(session, user_id)
+    async def revoke_all_user_tokens(self, session: AsyncSession, data: RefreshTokenModel) -> None:
+        await delete_all_user_tokens(session, data)
 
     async def set_secure_cookies(
         self,
@@ -254,7 +304,7 @@ class TokenService:
             httponly=True,
             secure=settings.is_prod,  # Only send over HTTPS in production
             samesite="lax",
-            max_age=timedelta(minutes=settings.jwt.ACCESS_TOKEN_EXPIRE_MINUTES).seconds,
+            max_age=timedelta(minutes=settings.jwt.ACCESS_TOKEN_EXPIRE_MINUTES),
             path="/"
         )
         
@@ -264,7 +314,7 @@ class TokenService:
         httponly=True,
         secure=settings.is_prod,
         samesite="strict",
-        max_age=settings.jwt.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        max_age=timedelta(days=settings.jwt.REFRESH_TOKEN_EXPIRE_DAYS),
         path="/",  # Changed from "/auth/refresh" to "/"
         domain=None  # Explicitly set to None
     )
@@ -276,7 +326,7 @@ class TokenService:
                 httponly=False,  # Accessible by JavaScript
                 secure=settings.is_prod,
                 samesite="strict",
-                max_age=timedelta(minutes=settings.jwt.ACCESS_TOKEN_EXPIRE_MINUTES).seconds,
+                max_age=timedelta(minutes=settings.jwt.ACCESS_TOKEN_EXPIRE_MINUTES),
                 path="/"
             )
 

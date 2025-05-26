@@ -66,11 +66,8 @@ class UserService:
             ACCESS_TYPE:access_token,
             REFRESH_TYPE:refresh_token
         }
+
     
-    async def gather_user_data(self, request:Request) -> dict:
-        user_data =  await self.verify_user_tokens(request=request)
-        access_token = await self.token_service.verify_token(user_data[ACCESS_TYPE], ACCESS_TYPE)
-        return access_token
 
     async def authenticate_user(self, username: str, password: str) -> Optional[dict]:
         user = await self.get_user_by_username(username, password)
@@ -81,11 +78,9 @@ class UserService:
             
         try:
             # Create tokens
-            logger.debug('before create_both_tokens')
             tokens = await self.token_service.create_both_tokens({"sub": str(user.id)})
             
             # Store refresh token
-            logger.debug('before store_refresh_token')
             await self.token_service.store_refresh_token(
                 session=self.session,
                 user_id=user.id,
@@ -106,7 +101,7 @@ class UserService:
         payload = await self.verify_user_tokens(request=request)
         user_id = int((await self.token_service.verify_token(payload[ACCESS_TYPE], ACCESS_TYPE)).get('sub'))
         refresh_token = payload[REFRESH_TYPE]
-        logger.debug(f"{user_id=} {refresh_token=}")
+        #logger.debug(f"{user_id=} {refresh_token=}")
 
         try:
             user = await self.get_user_by_id(user_id)
@@ -127,3 +122,6 @@ class UserService:
         except Exception as e:
             logger.error(f"Error during token revocation: {e}")
             raise
+        
+    async def rotate_tokens(self, request:Request):
+        return await self.token_service.rotate_tokens(self.session, request)

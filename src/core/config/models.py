@@ -87,5 +87,5 @@ class Email_Settings(BaseModel):
 class JwtConfig(BaseModel):
     key:SecretStr = 'base_key'
     algorithm:str = 'HS256'
-    ACCESS_TOKEN_EXPIRE_MINUTES:int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES:int = 15
     REFRESH_TOKEN_EXPIRE_DAYS:int = 7

@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     AsyncSession,
     )
+from contextlib import asynccontextmanager
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.core.config.config import settings
 
@@ -39,6 +41,16 @@ class DbHelper:
         async with self.session_factory() as session:
             yield session
 
+    @asynccontextmanager
+    async def async_session(self):
+        async with self.session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
+
 
 db_helper = DbHelper(
     url=str(settings.db.give_url),
@@ -48,4 +60,3 @@ db_helper = DbHelper(
     max_overflow=settings.db.max_overflow
 )
 DBDI = Annotated[AsyncSession, Depends(db_helper.session_getter)]
-DBDI_WIPING = Annotated[AsyncSession, Depends(db_helper.dispose)]
