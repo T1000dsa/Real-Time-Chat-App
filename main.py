@@ -8,6 +8,7 @@ import logging
 from src.core.config.config import settings
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
+from src.core.middleware.middleware import init_token_refresh_middleware
 
 from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
@@ -19,18 +20,21 @@ from src.api.v1.endpoints.chat import router as chat_router
 async def lifespan(app: FastAPI):
     dictConfig(LOG_CONFIG)
     logger = logging.getLogger(__name__)
-    logger.info(settings)
+    logger.info(f'http://{settings.run.host}:{settings.run.port}')
+    #logger.info(settings)
     
     yield  # FastAPI handles requests here
 
     try:
         await db_helper.dispose()
+
         logger.info("✅ Connection pool closed cleanly")
     except Exception as e:
         logger.warning(f"⚠️ Error closing connection pool: {e}")
 
 app = FastAPI(lifespan=lifespan, title='real-time chat proj')
 
+init_token_refresh_middleware(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # can alter with time

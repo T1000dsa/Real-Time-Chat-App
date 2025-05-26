@@ -11,13 +11,8 @@ from src.utils.prepared_response import prepare_template
 from src.core.dependencies.db_injection import DBDI
 from src.frontend.menu.urls import choice_from_menu, menu_items
 from src.core.dependencies.auth_injection import GET_TOKEN_SERVICE, GET_CURRENT_ACTIVE_USER, GET_AUTH_SERVICE, GET_CURRENT_USER
-from src.core.config.auth_config import (
-    ACCESS_TYPE, 
-    REFRESH_TYPE,
-    CSRF_TYPE, 
-    form_scheme,
-    oauth2_scheme
-    )
+from src.core.config.auth_config import form_scheme
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix=settings.prefix.api_data.prefix, tags=['auth'])
@@ -159,30 +154,4 @@ async def logout(
     except Exception as e:
         logger.debug(f"Unexpected error: {e}")
     
-    return response
-
-
-@router.post("/refresh") # need to rebuild
-async def refresh_tokens(
-    request: Request,
-    session: DBDI,
-    token_service: GET_TOKEN_SERVICE
-):
-    refresh_token = request.cookies.get(REFRESH_TYPE)
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="Missing refresh token")
-    
-    try:
-        new_tokens = await token_service.rotate_tokens(session, refresh_token)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token rotation failed: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-    
-    response = RedirectResponse(url='/', status_code=302)
-    await token_service.set_secure_cookies(
-        response=response,
-        tokens=new_tokens
-    )
     return response

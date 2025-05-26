@@ -5,9 +5,9 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections = {}
         self.redis = redis.Redis(
-            host=settings.redis_settings.host,
-            port=settings.redis_settings.port,
-            db=settings.redis_settings.db
+            host=settings.redis.host,
+            port=settings.redis.port,
+            db=settings.redis.db
         )
         self.pubsub = self.redis.pubsub()
 

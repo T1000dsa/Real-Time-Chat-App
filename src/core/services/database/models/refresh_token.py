@@ -31,8 +31,8 @@ class RefreshTokenModel(Base):
     __tablename__ = "refresh_tokens"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    token: Mapped[str] = mapped_column(String(255), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(NaiveDateTime, nullable=False)
+    token: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(NaiveDateTime, nullable=False, index=True)
     revoked: Mapped[bool] = mapped_column(default=False)
     replaced_by_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -49,3 +49,6 @@ class RefreshTokenModel(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
     user: Mapped["UserModel"] = relationship(back_populates="refresh_tokens")
+
+    def __repr__(self):
+        return f"<Token id = {self.id} Revoked = {self.revoked}>"

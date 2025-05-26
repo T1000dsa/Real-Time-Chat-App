@@ -59,7 +59,7 @@ class UserModel(Base):
             await session.refresh(self, ['refresh_tokens'])
             
             for token in self.refresh_tokens:
-                token.is_revoked = True
+                token.revoked = True
                 session.add(token)
             
             await session.commit()
