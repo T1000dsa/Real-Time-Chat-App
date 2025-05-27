@@ -4,22 +4,24 @@ import time
 import logging
 from typing import Optional
 
+from src.utils.time_check import time_checker
 from src.core.dependencies.auth_injection import get_auth_service, get_token_service
 from src.core.dependencies.db_injection import db_helper
 from src.core.config.auth_config import REFRESH_TYPE, ACCESS_TYPE
 
 logger = logging.getLogger(__name__)
 
+ignore_path = {'/.well-known', '/ws/'}
+
 def init_token_refresh_middleware(app: FastAPI):
     @app.middleware("http")
+    @time_checker
     async def refresh_token(request: Request, call_next):
-        logger.info(f"Incoming request to: {request.url}")
-
-        if request.url.path.startswith("/ws/"):
+        if any(map(lambda x:request.url.path.startswith(x), ignore_path)):
             return await call_next(request)
         
-        start_time = time.perf_counter()
-        
+        logger.info(f"Incoming request to: {request.url} Path: {request.url.path}")
+
         # First process the request
         response:Response = await call_next(request)
         
@@ -35,13 +37,11 @@ def init_token_refresh_middleware(app: FastAPI):
 
                 
                 # Get refresh token from cookies
-                access_token = request.cookies.get(ACCESS_TYPE)
+                access_token: Optional[str] = request.cookies.get(ACCESS_TYPE)
                 refresh_token: Optional[str] = request.cookies.get(REFRESH_TYPE)
 
-                if not await token_service.token_expired(access_token, ACCESS_TYPE):
-                    process_time = time.perf_counter() - start_time
-                    response.headers["X-Process-Time"] = str(process_time)
-                    logger.debug(f"Time spent: {process_time*10**3} ms")
+                if not await token_service.is_token_expired(access_token, ACCESS_TYPE):
+
                     return response
                 
                 
@@ -49,6 +49,7 @@ def init_token_refresh_middleware(app: FastAPI):
                     try:
                         # Rotate tokens using the auth_service
                         new_tokens = await auth_service.rotate_tokens(request)
+                        
                         #logger.debug(new_tokens)
                         # Create a new response based on the original one
                     
@@ -58,11 +59,6 @@ def init_token_refresh_middleware(app: FastAPI):
                             response=response,
                             tokens=new_tokens
                         )
-
-                        process_time = time.perf_counter() - start_time
-
-                        response.headers["X-Process-Time"] = str(process_time)
-                        logger.debug(f"Time spent: {process_time*10**3} ms")
 
                         return response
                         
