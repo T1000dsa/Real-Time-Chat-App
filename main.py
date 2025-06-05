@@ -15,7 +15,7 @@ from src.api.v1.endpoints.main_router import router as main_router
 from src.api.v1.auth.authentication import router as auth_router
 from src.api.v1.endpoints.chat import router as chat_router
 
-
+#
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     dictConfig(LOG_CONFIG)
