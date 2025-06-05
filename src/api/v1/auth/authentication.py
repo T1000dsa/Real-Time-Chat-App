@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, status
+from fastapi import APIRouter, Form
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
-from jose import JWTError, jwt
 import logging
 
 from src.core.schemas.User import UserSchema
 from src.core.config.config import templates, settings
 from src.utils.prepared_response import prepare_template
-from src.core.dependencies.db_injection import DBDI
 from src.frontend.menu.urls import choice_from_menu, menu_items
-from src.core.dependencies.auth_injection import GET_TOKEN_SERVICE, GET_CURRENT_ACTIVE_USER, GET_AUTH_SERVICE, GET_CURRENT_USER
+from src.core.dependencies.auth_injection import AuthService
 from src.core.config.auth_config import form_scheme
 
 
@@ -46,7 +44,7 @@ async def html_login(
 async def login(
     request: Request,
     form_data: form_scheme,
-    auth_service: GET_AUTH_SERVICE
+    auth_service: AuthService
 ):
     try:
         tokens = await auth_service.authenticate_user(
@@ -56,6 +54,8 @@ async def login(
         
         if not tokens:
             return await html_login(request=request, error='Invalid credentials')
+        
+        logger.debug(tokens)
         
         response = RedirectResponse(url='/', status_code=302)
         await auth_service.token_service.set_secure_cookies(
@@ -93,7 +93,7 @@ async def html_register(
 @router.post("/register/process")
 async def register(
     request:Request,
-    auth_service: GET_AUTH_SERVICE,
+    auth_service: AuthService,
     username: str = Form(...),
     password: str = Form(...),
     password_again: str = Form(...),
@@ -143,14 +143,13 @@ async def register(
 @router.get('/logout')
 async def logout(
     request: Request,
-    auth_service: GET_AUTH_SERVICE
+    auth_service: AuthService
 ):
-    response = RedirectResponse(url=router.prefix + "/login")
+    response = RedirectResponse(url='/')
     
     try:
         response = await auth_service.logout_user(request=request, response=response)
-    except (JWTError, ValueError) as e:
-        logger.debug(f"Token error during logout: {e}")
+
     except Exception as e:
         logger.debug(f"Unexpected error: {e}")
     

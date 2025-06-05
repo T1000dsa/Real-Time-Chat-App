@@ -59,6 +59,8 @@ class UserService:
         refresh_token = request.cookies.get(REFRESH_TYPE)
         csrf_token = request.cookies.get(CSRF_TYPE)
 
+        logger.debug(f"{access_token[-11:]} {refresh_token[-11:]} {csrf_token}")
+
         for token in (access_token, refresh_token):
             await self.token_service.verify_csrf(token, csrf_token)
 
@@ -67,7 +69,10 @@ class UserService:
             REFRESH_TYPE:refresh_token
         }
 
-    
+    async def gather_user_data(self, request:Request) -> dict:
+        user_data =  await self.verify_user_tokens(request=request)
+        access_token = await self.token_service.verify_token(user_data[ACCESS_TYPE], ACCESS_TYPE)
+        return access_token
 
     async def authenticate_user(self, username: str, password: str) -> Optional[dict]:
         user = await self.get_user_by_username(username, password)

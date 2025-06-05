@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from fastapi import Request
 from typing import Optional, Dict, Any
 
 class TemplateData(BaseModel):

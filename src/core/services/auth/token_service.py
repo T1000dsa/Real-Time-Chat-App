@@ -50,7 +50,8 @@ class TokenService:
         try:
             # Just get expiration without full verify
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm], options={"verify_signature": False})
-            return datetime.now(timezone.utc) > datetime.fromtimestamp(payload.get('exp'), timezone.utc)
+            if payload['type'] == token_type:
+                return datetime.now(timezone.utc) > datetime.fromtimestamp(payload.get('exp'), timezone.utc)
         except JWTError:
             return True
 
@@ -60,14 +61,16 @@ class TokenService:
         
         try:
             payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
+            logger.debug(f'{payload.get("csrf")=} {csrf=}')
             if payload.get("csrf") != csrf:
                 raise HTTPException(status_code=403, detail="CSRF token mismatch")
             return True
-        except JWTError:
-            raise HTTPException(status_code=403, detail="Invalid token")
+        except JWTError as err:
+            logger.error(err)
+            raise err
         
     @time_checker
-    async def handle_refresh_token(self, session, refresh_token, csrf_token):
+    async def handle_refresh_token(self, session, refresh_token):
         try:
             # First try normal verification
             payload = await self.verify_token(refresh_token, REFRESH_TYPE)
@@ -84,14 +87,15 @@ class TokenService:
             # Check if this specific token was revoked
             if await self.is_token_revoked(session, refresh_token):
                 raise credentials_exception
+            
         except JWTError as err:
             logger.error(f'Token verification failed: {err}')
             raise credentials_exception
         
         # If we get here, token is either:
         # 1. Valid and not expired, or
-        # 2. Expired but not revoked
-        new_tokens = await self.create_both_tokens({"sub": user_id})
+        # 2. Expired but not revoked 
+        new_tokens = await self.create_both_tokens({"sub": user_id}) # New csrf 
         old_token = await select_data(session, refresh_token, user_id)
         await self.store_refresh_token(
             session, 
@@ -102,7 +106,7 @@ class TokenService:
         return {
             ACCESS_TYPE: new_tokens.get(ACCESS_TYPE),
             REFRESH_TYPE: new_tokens.get(REFRESH_TYPE),
-            CSRF_TYPE: csrf_token
+            CSRF_TYPE: new_tokens.get(CSRF_TYPE)
         }
         
     @time_checker
@@ -207,7 +211,7 @@ class TokenService:
             try:
                 payload = await self.verify_token(refresh_token, REFRESH_TYPE)
             except:
-                return await self.handle_refresh_token(session, refresh_token, csrf_token)
+                return await self.handle_refresh_token(session, refresh_token)
                 
             user_id = payload.get("sub")
             if not user_id:
@@ -248,13 +252,17 @@ class TokenService:
                     old_token_record.id if old_token_record else None
                 )
                 await session.commit()
-                
-            logger.debug('Token rotation completed')
-            return {
+
+            result = {
                 ACCESS_TYPE: new_tokens.get(ACCESS_TYPE, access_token),
                 REFRESH_TYPE: new_tokens.get(REFRESH_TYPE, refresh_token),
                 CSRF_TYPE: csrf_token
             }
+                
+            logger.debug('Token rotation completed')
+            logger.debug(result)
+
+            return result
             
         except Exception as e:
             logger.error(f"Token rotation failed: {e}")
@@ -321,10 +329,11 @@ class TokenService:
         if token:
             token = self.hash_token(token)
         refresh_token = await select_data(token)
-        refresh_token.revoked = True
-        await session.commit()
+        logger.debug(refresh_token)
+        if refresh_token:
+            refresh_token.revoked = True
+            await session.commit()
 
-        #await delete_data(session, token, user_id)
 
     @time_checker
     async def revoke_all_user_tokens(self, session: AsyncSession, data: RefreshTokenModel) -> None:
@@ -340,6 +349,9 @@ class TokenService:
         access_token = tokens.get(ACCESS_TYPE)
         refresh_token = tokens.get(REFRESH_TYPE)
         csrf_token = tokens.get(CSRF_TYPE)
+
+        logger.debug(f'{access_token} {refresh_token} {csrf_token}')
+        
 
         response.set_cookie(
             key=ACCESS_TYPE,
