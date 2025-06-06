@@ -7,50 +7,21 @@ from datetime import datetime, timezone
 import logging
 
 from src.utils.time_check import time_checker
-from src.core.services.database.models.refresh_token import RefreshTokenModel
-from src.core.services.database.models.user import UserModel
+from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
+from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.auth_schema import RefreshToken
-from src.core.schemas.User import UserSchema
-from src.core.config.auth_config import (
-    pwd_context
-)
-
 
 logger = logging.getLogger(__name__)
 
 @time_checker
-async def select_data(
+async def select_data_token(
     session: AsyncSession,
-    token: Optional[str] = None,
-    user_id: Optional[int] = None,
-    model_type: Union[Type[RefreshTokenModel], Type[UserModel]] = RefreshTokenModel
+    hashed_token: str,
 ) -> Union[RefreshTokenModel, UserModel, None]:
     try:
-        if model_type == RefreshTokenModel:
-            if token:
-                # OPTIMIZATION: Hash the token before comparing
-                # This assumes you store hashed tokens in the database
-                hashed_token = pwd_context.hash(token)
-                stmt = select(RefreshTokenModel).where(
-                    RefreshTokenModel.token == hashed_token
-                )
-                return (await session.execute(stmt)).scalar_one_or_none()
-                
-            if user_id:
-                stmt = select(RefreshTokenModel).where(
-                    RefreshTokenModel.user_id == user_id
-                )
-                return (await session.execute(stmt)).scalar_one_or_none()
-
-        elif model_type == UserModel:
-            if user_id:
-                return await session.get(UserModel, user_id)
-            if token:
-                # First find the token, then get the user
-                token_record = await select_data(session, token=token, model_type=RefreshTokenModel)
-                if token_record:
-                    return await session.get(UserModel, token_record.user_id)
-                return None
+        stmt = select(RefreshTokenModel).where(
+                    RefreshTokenModel.token == hashed_token)
+        return (await session.execute(stmt)).scalar_one_or_none()
 
     except SQLAlchemyError as e:
         logger.error(f"Database error in select_data: {str(e)}", exc_info=True)
@@ -60,28 +31,28 @@ async def select_data(
         )
     
 @time_checker
-async def insert_data(
+async def insert_data_token(
     session: AsyncSession,
-    data: RefreshToken
+    token_model: RefreshToken
 ) -> RefreshTokenModel:
     """Properly handles refresh token insertion with error handling"""
     try:
-        token_model = RefreshTokenModel(
-            user_id=data.user_id,
-            token=data.token,
-            expires_at=data.expires_at,
-            revoked=data.revoked,
-            replaced_by_token=data.replaced_by_token,
-            family_id=data.family_id,
-            previous_token_id=data.previous_token_id,
+        token_model_res = RefreshTokenModel(
+            user_id=token_model.user_id,
+            token=token_model.token,
+            expires_at=token_model.expires_at,
+            revoked=token_model.revoked,
+            replaced_by_token=token_model.replaced_by_token,
+            family_id=token_model.family_id,
+            previous_token_id=token_model.previous_token_id,
             # created_at is automatically set by the model
-            device_info=data.device_info if hasattr(data, 'device_info') else None
+            device_info=token_model.device_info if hasattr(token_model, 'device_info') else None
         )
         
-        session.add(token_model)
+        session.add(token_model_res)
         await session.commit()
-        await session.refresh(token_model)
-        return token_model
+        await session.refresh(token_model_res)
+        return token_model_res
         
     except IntegrityError as err:
         await session.rollback()
@@ -99,54 +70,36 @@ async def insert_data(
         )
     
 @time_checker
-async def delete_data(
+async def delete_data_by_token(
     session: AsyncSession,
-    token:Optional[str],
-    user_id:Optional[int]
+    token:str,
 ) -> None:
     try:
-        logger.debug('in delete_data')
-        if bool(token and user_id): # 1 1
-                await session.execute(
-                delete(RefreshTokenModel)
-                .where(RefreshTokenModel.token == token and RefreshTokenModel.user_id == user_id))
-                await session.commit()
+        await session.execute(
+        delete(RefreshTokenModel)
+        .where(RefreshTokenModel.token == token))
+        await session.commit()
 
-        if bool(token and not user_id): # 1 0
-                await session.execute(
-                delete(RefreshTokenModel)
-                .where(RefreshTokenModel.token == token))
-                await session.commit()
-            
-        if bool(not token and user_id): # 0 1
-                await session.execute(
-                delete(RefreshTokenModel)
-                .where(RefreshTokenModel.user_id == user_id))
-                await session.commit()
-
-
-    except ValueError as err:
-        logger.error('Invalid data type provided')
-        raise err
-    
     except Exception as err:
         logger.critical(f'Something unpredictable: {err}')
         await session.rollback()
         raise err
     
 @time_checker
-async def delete_all_user_tokens(
-        session:AsyncSession,
-          data: RefreshTokenModel
-          ):
-    logger.debug(f'{data} {type(data)}')
+async def delete_data_by_user(
+    session: AsyncSession,
+    user_id:int,
+) -> None:
     try:
         await session.execute(
-                delete(RefreshTokenModel)
-                .where(RefreshTokenModel.user_id == data.id))
+        delete(RefreshTokenModel)
+        .where(RefreshTokenModel.user_id == user_id))
         await session.commit()
+
     except Exception as err:
         logger.critical(f'Something unpredictable: {err}')
+        await session.rollback()
+        raise err
         
 @time_checker
 async def get_refresh_token_data(session: AsyncSession, token:str) -> RefreshTokenModel:
@@ -168,17 +121,3 @@ async def get_refresh_token_data(session: AsyncSession, token:str) -> RefreshTok
     if freshest:
         return freshest
     logger.debug('get_refresh_token_data end')
-
-
-async def nuclear_option(session: AsyncSession):
-    """Delete ALL refresh tokens in the system (admin only)"""
-    try:
-        await session.execute(delete(RefreshTokenModel))
-        await session.commit()
-        logger.warning("Nuclear option executed - all refresh tokens purged")
-
-    except Exception as e:
-        await session.rollback()
-        logger.critical(f"Failed nuclear option: {e}")
-        raise e
-    

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from src.core.services.database.models.base import Base
 
 if TYPE_CHECKING:
-    from src.core.services.database.models.user import UserModel  # Path to your UserModel
+    from core.services.auth.domain.models.user import UserModel  # Path to your UserModel
 
 
 class NaiveDateTime(TypeDecorator):

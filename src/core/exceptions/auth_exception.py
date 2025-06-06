@@ -17,5 +17,5 @@ async def auth_exception_handler(request: Request, exc: AuthException):
         headers=exc.headers
     )
 
-def setup_exception_handlers(app: FastAPI):
-    app.add_exception_handler(AuthException, auth_exception_handler)
+#def setup_exception_handlers(app: FastAPI):
+    #app.add_exception_handler(AuthException, auth_exception_handler)

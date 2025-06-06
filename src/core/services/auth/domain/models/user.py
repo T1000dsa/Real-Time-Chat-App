@@ -8,12 +8,11 @@ from sqlalchemy import String
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List, TYPE_CHECKING
 import logging
-import bcrypt
 
 from src.core.services.database.models.base import Base, int_pk, created_at, updated_at
 
 if TYPE_CHECKING:
-    from src.core.services.database.models.refresh_token import RefreshTokenModel
+    from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
 
 logger = logging.getLogger(__name__)
 
@@ -38,19 +37,6 @@ class UserModel(Base):
 
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username})>"
-    
-    def set_password(self, password: str):
-        """Securely hash and store password"""
-        self.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode()
-
-    def check_password(self, plaintext_password: str) -> bool:
-        """Verify password with automatic format correction"""
-            
-        try:
-            return bcrypt.checkpw(plaintext_password.encode('utf-8'), self.password.encode())
-        except Exception as err:
-            logger.error(f"Password verification failed for user {self.id}: {err}")
-            return False
         
     async def revoke_all_tokens(self, session:AsyncSession):
         """Revoke all refresh tokens for this user"""

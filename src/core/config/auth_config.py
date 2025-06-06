@@ -1,52 +1,43 @@
-from fastapi import HTTPException, status, Depends
-from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from authlib.integrations.starlette_client import OAuth
-from typing import Any, Dict, Annotated
+from datetime import datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from src.core.config.config import settings
+from src.core.services.auth.domain.models.user import UserModel
+from src.core.schemas.User import UserSchema
+from src.core.services.auth.infrastructure import Bcryptprovider, UserService
 
 
-oauth = OAuth()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-form_scheme = Annotated[OAuth2PasswordRequestForm, Depends(OAuth2PasswordRequestForm)]
 
-SECRET_KEY = settings.jwt.key
-ALGORITHM = settings.jwt.algorithm
+class AuthCore:
+    def __init__(self):
+        self.oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+        self.ACCESS_TOKEN_EXPIRE = timedelta(minutes=settings.jwt.ACCESS_TOKEN_EXPIRE_MINUTES)
+        self.REFRESH_TOKEN_EXPIRE = timedelta(days=settings.jwt.REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        self.ACCESS_TYPE = 'access'
+        self.REFRESH_TYPE = 'refresh'
 
-ACCESS_TYPE = 'access'
-REFRESH_TYPE = 'refresh'
-CSRF_TYPE = 'csrf'
+class AuthService(AuthCore):
+    def __init__(self, session: AsyncSession,user_repo: UserService, hash_service: Bcryptprovider):
+        self.session = session
+        self._repo = user_repo
+        self._hash = hash_service
+    
+    async def get_user_for_auth(self, username: str) -> UserModel:
+        return await self._repo.get_user_for_auth(username)
+    
+    async def get_user_for_auth_by_id(self, user_id:int):
+        return await self._repo.get_user_for_auth_by_id(self.session, user_id)
+    
+    async def get_user_for_auth_by_email(self, email:str):
+        return await self._repo.get_user_for_auth_by_id(self.session, email)
 
-class AuthException(HTTPException):
-    def __init__(
-        self,
-        status_code: int = status.HTTP_401_UNAUTHORIZED,
-        detail: Any = None,
-        headers: Dict[str, str] | None = None,
-        error: str | None = None,
-        error_description: str | None = None
-    ):
-        if headers is None:
-            headers = {"WWW-Authenticate": "Bearer"}
-        if error:
-            if not detail:
-                detail = {}
-            if isinstance(detail, dict):
-                detail.update({"error": error})
-                if error_description:
-                    detail.update({"error_description": error_description})
-        super().__init__(status_code=status_code, detail=detail, headers=headers)
-
-credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-inactive_user_exception = AuthException(
-    error="inactive_user",
-    error_description="The user is inactive"
-)
+    async def create_user(self, user_data:UserSchema) -> Optional[UserModel]:
+        user = await self._repo.create_user(self.session, user_data, self._hash)
+        return user
+    
+    async def delete_user(self, user_id:int):
+        await self._repo.delete_user(self.session, user_id)
