@@ -2,7 +2,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
 from .base import Base, int_pk, created_at
-from .user import UserModel
+from src.core.services.auth.domain.models.user import UserModel
 
 class ChatRoom(Base):
     __tablename__ = 'chat_rooms'

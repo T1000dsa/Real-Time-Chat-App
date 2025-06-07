@@ -8,7 +8,7 @@ from src.core.dependencies.db_injection import DBDI
 from src.core.services.chat.chat_manager import manager
 from src.utils.prepared_response import prepare_template 
 from src.core.config.config import templates, settings
-from src.core.dependencies.auth_injection import AuthService
+from src.core.dependencies.auth_injection import AuthDependency
 
 
 router = APIRouter(prefix=settings.prefix.api_data.prefix, tags=['api'])
@@ -106,7 +106,7 @@ async def handle_ws_message(user_id: str, session: DBDI, data: dict):
 @router.get('/chat_room')
 async def index(
     request:Request,
-    auth_service: AuthService
+    auth_service: AuthDependency
     ):
     user_data = await auth_service.gather_user_data(request=request)
 

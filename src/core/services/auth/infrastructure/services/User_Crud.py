@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.User import UserSchema
 from src.core.services.auth.domain.interfaces import UserRepository
-from src.core.services.auth.infrastructure import Bcryptprovider
+from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.database.orm.user_orm import (
     select_data_user, 
     select_data_user_id, 

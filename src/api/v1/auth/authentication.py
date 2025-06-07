@@ -8,7 +8,7 @@ from src.core.schemas.User import UserSchema
 from src.core.config.config import templates, settings
 from src.utils.prepared_response import prepare_template
 from src.frontend.menu.urls import choice_from_menu, menu_items
-from src.core.dependencies.auth_injection import AuthService
+from src.core.dependencies.auth_injection import AuthDependency
 from src.core.config.auth_config import form_scheme
 
 
@@ -44,8 +44,9 @@ async def html_login(
 async def login(
     request: Request,
     form_data: form_scheme,
-    auth_service: AuthService
+    auth_service: AuthDependency
 ):
+    logger.debug(auth_service)
     try:
         tokens = await auth_service.authenticate_user(
             username=form_data.username,
@@ -54,14 +55,9 @@ async def login(
         
         if not tokens:
             return await html_login(request=request, error='Invalid credentials')
+        logger.debug('after tokens check')
         
-        logger.debug(tokens)
-        
-        response = RedirectResponse(url='/', status_code=302)
-        await auth_service.token_service.set_secure_cookies(
-            response=response,
-            tokens=tokens
-        )
+        response = await auth_service.set_cookies(response=RedirectResponse(url='/', status_code=302), tokens=tokens)
         return response
         
     except Exception as err:
@@ -93,7 +89,7 @@ async def html_register(
 @router.post("/register/process")
 async def register(
     request:Request,
-    auth_service: AuthService,
+    auth_service: AuthDependency,
     username: str = Form(...),
     password: str = Form(...),
     password_again: str = Form(...),
@@ -112,9 +108,8 @@ async def register(
         bio=bio
     )
 
-    user = auth_service
     try:
-        await user.create_user(user_data)
+        await auth_service.register_user(user_data)
  
     except IntegrityError as err:
         logger.info(f'{err}') 
@@ -143,12 +138,13 @@ async def register(
 @router.get('/logout')
 async def logout(
     request: Request,
-    auth_service: AuthService
+    auth_service: AuthDependency
 ):
     response = RedirectResponse(url='/')
+    logger.debug('Tring to logout...')
     
     try:
-        response = await auth_service.logout_user(request=request, response=response)
+        response = await auth_service.logout(request=request, response=response)
 
     except Exception as e:
         logger.debug(f"Unexpected error: {e}")
