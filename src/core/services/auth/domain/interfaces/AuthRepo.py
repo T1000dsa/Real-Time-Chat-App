@@ -1,7 +1,6 @@
 from fastapi import Response, Request
 from abc import ABC, abstractmethod
 
-from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.User import UserSchema
 
 

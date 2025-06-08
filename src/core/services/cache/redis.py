@@ -1,5 +1,7 @@
 import redis.asyncio as redis
+
 from src.core.config.config import settings
+
 
 class ConnectionManager:
     def __init__(self):

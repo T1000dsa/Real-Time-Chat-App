@@ -8,8 +8,8 @@ from alembic import context
 
 from src.core.config.config import settings
 from src.core.services.database.models.base import Base
-from src.core.services.database.models.user import UserModel
-from src.core.services.auth.infrastructure.storage.refresh_token import RefreshTokenModel
+from src.core.services.auth.domain.models.user import UserModel
+from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
 from src.core.services.database.models.chat import ChatRoom, Message, ChatParticipant
 # alembic revision --autogenerate -m "init"
 

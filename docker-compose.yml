@@ -1,19 +1,85 @@
 services:
-  fastapi_chat:  # Your service name
-    build: .  # Build from Dockerfile in current directory
+  db:
+    container_name: postgresql_db
+    image: postgres:latest
+    restart: always
     ports:
-      - "8000:8000"  # Host:Container port mapping
-    volumes:
-      - .:/app  # Bind mount for development
+      - 5432:5432
+    env_file:
+      - .env  # Explicitly load the .env file
     environment:
-      - DEBUG=1
+      - POSTGRES_USER=${FAST__DB__USER}
+      - POSTGRES_PASSWORD=${FAST__DB__PASSWORD}
+      - POSTGRES_DB=${FAST__DB__NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=someemail@gmail.come
+      - PGADMIN_DEFAULT_PASSWORD=somepassword
+    ports:
+      - 5050:80
+    depends_on:
+      - db
+  backend:
+    image: fastapi-container
+    build: 
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       - redis
+      - celery_worker
+      - celery_beat
 
-  redis:  # Another service
-    image: redis:alpine
+    env_file:
+      - .env  # Explicitly load the .env file
+    environment:
+      - DB_HOST=db
+      - POSTGRES_USER=${FAST__DB__USER}
+      - POSTGRES_PASSWORD=${FAST__DB__PASSWORD}
+      - POSTGRES_DB=${FAST__DB__NAME}
+    container_name: app
+    command: bash -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - .:/app
+    ports:
+      - 8000:8000
+    restart: always
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
 
-volumes:  # Define persistent volumes
+  celery_worker:
+    build: .
+    command: celery -A src.core.services.tasks.celery worker --pool=solo --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  celery_beat:
+    build: .
+    command: celery -A src.core.services.tasks.celery beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - celery_worker
+
+
+volumes:
+  db-data:
   redis_data:

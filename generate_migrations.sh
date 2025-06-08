@@ -14,5 +14,6 @@ alembic revision --autogenerate -m "Initial tables (Docker-proofed)"
 
 echo "💀 Killing temp DB..."  
 docker stop temp_db  
+sleep 10
 
 echo "✅ Done. Now rebuild your *real* Docker setup."  
