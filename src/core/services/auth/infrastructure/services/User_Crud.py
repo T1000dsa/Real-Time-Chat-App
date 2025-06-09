@@ -21,8 +21,8 @@ class UserService(UserRepository):
         self.session = session
         self._hash = hash_service
 
-    async def get_user_for_auth(self, username: str) -> UserModel:
-        return await select_data_user(self.session, username)
+    async def get_user_for_auth(self, login: str) -> UserModel:
+        return await select_data_user(self.session, login)
     
     async def get_user_for_auth_by_id(self, user_id:int):
         return await select_data_user_id(self.session, user_id)
@@ -38,7 +38,7 @@ class UserService(UserRepository):
         await delete_data_user(self.session, user_id)
 
     async def activate_user(self, user_id: int) -> None:
-        await user_activate(self, user_id, True)
+        await user_activate(self.session, user_id, True)
 
     async def disable_user(self, user_id: int) -> None:
-        await user_activate(self, user_id, False)
+        await user_activate(self.session, user_id, False)

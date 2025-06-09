@@ -1,12 +1,14 @@
 from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 
-class UserSchema(BaseModel):
-    username:str
-    password:str
-    password_again:str
 
-    #public_name:Optional[str] = None
+class UserBase(BaseModel):
+    login:str
+    password:str
+
+class UserSchema(UserBase):
+    password_again:str
+    
     email:Optional[str] = None
 
     @model_validator(mode="after")

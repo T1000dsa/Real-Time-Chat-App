@@ -17,39 +17,46 @@ class AuthProvider(AuthRepository):
         self._hash = hash_service
         self._token = token_service
 
-    async def authenticate_user(self, username, password) -> dict:
+    async def authenticate_user(self, login, password) -> dict:
         """
         Three-step authentication. 
         Firstly we search users in db, if we find them, return back to authenticate_user UserModel.
         Secondly we verify input password and actual hashed password that stored in database. 
         Thirdly if everything is okay gain tokens and sent them back toward login logic.
         """
-        logger.debug(f'{username} tries to authorize...')
+        logger.debug(f'{login} tries to authorize...')
         # Fisrt step
-        user:UserModel = await self._repo.get_user_for_auth(username)
-        logger.debug(f'{user=}')
+        user:UserModel = await self._repo.get_user_for_auth(login)
         if not user:
             #raise KeyError('user not found') # Temporary. Raise with expept factory, not from credential 
             return {}
+        logger.debug(f'{user.login} verificated')
         
         # Second step
         res = await self._hash.verify_password(password, user.password)
         if not res:
             #raise KeyError('username or password not matched') # actually username(login) is matched, just making vague response for security
             return {}
+        logger.debug(f'{user.login} password is correct')
         
         # Third step 
         # gain_tokens
-        user_data = {'sub':user.id}
+        user_data = {'sub':str(user.id)}
         tokens = await self._token.create_tokens(user_data)
+        logger.debug(f'tokens created successfully')
+
+        # activate user
+        await self._repo.activate_user(user.id)
+        logger.debug(f'User {user.login} activated')
 
         return tokens
     
     async def register_user(self, user_data:UserSchema) -> None:
-        pass
+        await self._repo.create_user(user_data)
 
-    async def gather_user_data(self, request:Request) -> dict:
-        return {}
+    async def gather_user_data(self, request:Request) -> UserModel:
+        verified_token = await self._token.verify_token_id(request, self._token.ACCESS_TYPE)
+        return await self._repo.get_user_for_auth_by_id(verified_token)
     
     async def set_cookies(self, response:Response, tokens:dict) -> Response:
         settle = await self._token.set_secure_cookies(response, tokens)
@@ -57,4 +64,8 @@ class AuthProvider(AuthRepository):
         
 
     async def logout(self, request:Request,  response:Response) -> Response:
+        # gain token from request cookies
+        verified_token = await self._token.verify_token_id(request, self._token.ACCESS_TYPE)
+        # disable user
+        await self._repo.disable_user(verified_token)
         return await self._token.clear_tokens(response)

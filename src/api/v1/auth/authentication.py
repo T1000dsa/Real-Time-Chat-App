@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 import logging
 
-from src.core.schemas.User import UserSchema
+from src.core.schemas.User import UserSchema, UserBase
 from src.core.config.config import templates, settings
 from src.utils.prepared_response import prepare_template
 from src.frontend.menu.urls import choice_from_menu, menu_items
@@ -43,14 +43,16 @@ async def html_login(
 @router.post("/login/process")
 async def login(
     request: Request,
-    form_data: form_scheme,
-    auth_service: AuthDependency
+    auth_service: AuthDependency,
+    login: str = Form(...),
+    password: str = Form(...),
 ):
     logger.debug(auth_service)
+
     try:
         tokens = await auth_service.authenticate_user(
-            username=form_data.username,
-            password=form_data.password
+            login=login,
+            password=password
         )
         
         if not tokens:
@@ -90,7 +92,7 @@ async def html_register(
 async def register(
     request:Request,
     auth_service: AuthDependency,
-    username: str = Form(...),
+    login: str = Form(...),
     password: str = Form(...),
     password_again: str = Form(...),
     mail: str = Form(""),
@@ -98,10 +100,10 @@ async def register(
     
 ):
 
-    logger.info(f'User: {username} tries to regist...')
+    logger.info(f'User: {login} tries to regist...')
 
     user_data = UserSchema(
-        username=username,
+        login=login,
         password=password,
         password_again=password_again,
         mail=mail,

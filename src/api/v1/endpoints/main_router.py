@@ -4,6 +4,7 @@ import logging
 
 from src.utils.prepared_response import prepare_template 
 from src.core.config.config import templates
+from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, GET_CURRENT_USER
 
 
 logger = logging.getLogger(__name__)
@@ -28,3 +29,18 @@ async def index(
 
     response = templates.TemplateResponse('index.html', template_response_body_data)
     return response
+
+@router.get('/protected')
+async def index(
+    request:Request,
+    user:GET_CURRENT_USER
+    ):
+    return "Protected endpoint!!!"
+
+
+@router.get('/protected11')
+async def index(
+    request:Request,
+    user:GET_CURRENT_ACTIVE_USER
+    ):
+    return "Protected endpoint!!!"

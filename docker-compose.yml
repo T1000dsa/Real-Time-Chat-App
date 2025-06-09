@@ -35,10 +35,14 @@ services:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      - redis
-      - celery_worker
-      - celery_beat
-
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      celery_worker:
+        condition: service_started
+      celery_beat:
+        condition: service_started
     env_file:
       - .env  # Explicitly load the .env file
     environment:
@@ -47,7 +51,8 @@ services:
       - POSTGRES_PASSWORD=${FAST__DB__PASSWORD}
       - POSTGRES_DB=${FAST__DB__NAME}
     container_name: app
-    command: bash -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+    command: ./generate_migrations.sh && bash -c "wait-for-it db:5432 -- python db_init.py && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - .:/app
     ports:

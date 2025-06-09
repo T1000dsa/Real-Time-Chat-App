@@ -1,5 +1,6 @@
-from fastapi import Depends
-from typing import Annotated
+from fastapi import Depends, Request
+from typing import Annotated, Optional
+import logging
 
 from src.core.dependencies.db_injection import DBDI
 from src.core.services.auth.domain.interfaces import TokenService, TokenRepository, HashService, AuthRepository, UserRepository
@@ -8,6 +9,11 @@ from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.AuthProvider import AuthProvider
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
+from src.core.services.auth.domain.models.user import UserModel
+from src.core.exceptions.auth_exception import credentials_exception, inactive_user_exception
+
+
+logger = logging.getLogger(__name__)
 
 def get_token_service() -> JWTService:
     return JWTService()
@@ -17,6 +23,12 @@ def get_token_repo() -> DatabaseTokenRepository:
 
 def get_hash_service() -> Bcryptprovider:
     return Bcryptprovider()
+
+def get_token_from_cookie(
+        request: Request, 
+        jwt_service:JWTService = Depends(get_token_service)
+        ) -> Optional[str]:
+    return request.cookies.get(jwt_service.ACCESS_TYPE)
 
 def get_user_repo(
         session:DBDI, 
@@ -38,4 +50,39 @@ def get_auth_provider(
         token_service=token_service
         )
 
+async def get_current_user(
+    request:Request,
+    token: str = Depends(get_token_from_cookie),
+    auth_service: AuthProvider = Depends(get_auth_provider)
+) -> UserModel:
+    if token is None:
+        logger.info('Someone tried to reach endpoint')
+        raise credentials_exception
+    
+    if token is None:
+        logger.info('Someone tried to reach endpoint')
+        raise credentials_exception
+    try:
+        user = await auth_service.gather_user_data(request=request)
+
+        if user is None:
+            logger.info('Someone tried to reach endpoint')
+            raise credentials_exception
+            
+    except Exception as err:
+        logger.error(f'{err}')
+        raise err
+        
+    return user
+
+async def get_current_active_user(
+    current_user: UserModel = Depends(get_current_user)
+) -> UserModel:
+    if not current_user.is_active:
+        logger.info('Someone tried to reach endpoint')
+        raise inactive_user_exception
+    return current_user
+
 AuthDependency = Annotated[AuthProvider, Depends(get_auth_provider)]
+GET_CURRENT_USER = Annotated[UserModel, Depends(get_current_user)]
+GET_CURRENT_ACTIVE_USER = Annotated[UserModel, Depends(get_current_active_user)]

@@ -21,12 +21,12 @@ class UserModel(Base):
     __tablename__ = 'users'
 
     id: Mapped[int_pk]
-    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(128), nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     join_date: Mapped[created_at]
     last_time_login: Mapped[updated_at]
-    is_active:Mapped[bool] = mapped_column(default=True)
+    is_active:Mapped[bool] = mapped_column(default=False)
     is_superuser: Mapped[bool] = mapped_column(default=False)
 
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
@@ -36,7 +36,7 @@ class UserModel(Base):
 
 
     def __repr__(self):
-        return f"<User(id={self.id}, username={self.username})>"
+        return f"<User(id={self.id}, username={self.login})>"
         
     async def revoke_all_tokens(self, session:AsyncSession):
         """Revoke all refresh tokens for this user"""

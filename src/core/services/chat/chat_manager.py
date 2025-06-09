@@ -1,65 +1,88 @@
 from fastapi import WebSocket
-from typing import Dict, Set
-import json
+from typing import Optional, Dict
+from datetime import datetime, timezone
+import httpx
+import logging
+from pydantic import BaseModel
 
+
+logger = logging.getLogger(__name__)
+
+class MessageModel(BaseModel):
+    sender_id: int
+    sender_name: str
+    content: str
+    timestamp: datetime
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}  # user_id → WebSocket
-        self.user_rooms: Dict[str, Set[str]] = {}  # user_id → set of room_ids
-        self.room_users: Dict[str, Set[str]] = {}  # room_id → set of user_ids
+        self.active_connections: Dict[int, WebSocket] = {}
+        self.user_info: Dict[int, dict] = {}
+        self.webhook_url = "https://your-webhook-manager.com/webhook"
+        self.messages: list[MessageModel] = []  # Stores chat history
 
-    async def connect(self, user_id: str, websocket: WebSocket):
+        logger.info("ConnectionManager initialized")
+
+    async def connect(self, websocket: WebSocket, client_id: int, user_info: dict = None):
+        logger.info(f"Attempting to connect client {client_id}")
         await websocket.accept()
-        self.active_connections[user_id] = websocket
-        self.user_rooms.setdefault(user_id, set())
+        self.active_connections[client_id] = websocket
+        self.user_info[client_id] = user_info or {}
+        logger.info(f"Client {client_id} connected successfully")
+        await self.notify_webhook(
+            "connection",
+            client_id,
+            {"status": "connected", "user_info": self.user_info[client_id]}
+        )
 
-    async def disconnect(self, user_id: str):
-        if user_id in self.active_connections:
-            # Leave all rooms when disconnecting
-            for room_id in list(self.user_rooms.get(user_id, [])):
-                await self.leave_room(user_id, room_id)
-            del self.active_connections[user_id]
-
-    async def join_room(self, user_id: str, room_id: str):
-        self.user_rooms[user_id].add(room_id)
-        self.room_users.setdefault(room_id, set()).add(user_id)
+    async def notify_webhook(self, event_type: str, client_id: int, data: Optional[dict] = None):
+        msg = MessageModel(
+            sender_id=client_id,
+            sender_name=self.user_info,
+            content=data,
+            timestamp=datetime.now()
+        )
+        self.messages.append(msg)
+        payload = {
+            "event": event_type,
+            "client_id": client_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": data or {}
+        }
+        logger.debug(f"Sending webhook for client {client_id}: {payload}")
         
-        # Notify others in the room
-        join_message = json.dumps({
-            "type": "system",
-            "content": f"User {user_id} joined the room",
-            "room_id": room_id
-        })
-        await self.broadcast_to_room(join_message, room_id, exclude=[user_id])
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    self.webhook_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                response.raise_for_status()
+                logger.info(f"Webhook notification successful for client {client_id}")
+            except Exception as e:
+                logger.error(f"Webhook error for client {client_id}: {str(e)}")
 
-    async def leave_room(self, user_id: str, room_id: str):
-        if user_id in self.user_rooms and room_id in self.user_rooms[user_id]:
-            self.user_rooms[user_id].remove(room_id)
-            if room_id in self.room_users and user_id in self.room_users[room_id]:
-                self.room_users[room_id].remove(user_id)
-            
-            # Notify others in the room
-            leave_message = json.dumps({
-                "type": "system",
-                "content": f"User {user_id} left the room",
-                "room_id": room_id
-            })
-            await self.broadcast_to_room(leave_message, room_id)
+    def disconnect(self, websocket: WebSocket, client_id: int):
+        if client_id in self.active_connections:
+            del self.active_connections[client_id]
+            logger.info(f"Client {client_id} disconnected")
 
-    async def send_personal_message(self, message: str, user_id: str):
-        if user_id in self.active_connections:
-            await self.active_connections[user_id].send_text(message)
+    async def broadcast(self, message: str, sender_id: int):
 
-    async def broadcast_to_room(self, message: str, room_id: str, exclude: list = None):
-        exclude = exclude or []
-        if room_id in self.room_users:
-            for user_id in self.room_users[room_id]:
-                if user_id not in exclude and user_id in self.active_connections:
-                    await self.active_connections[user_id].send_text(message)
-
-    async def is_connected(self, user_id:str):
-        return True if self.active_connections[user_id] else False
-
+        logger.debug(f"Broadcasting message from {sender_id}: {message}")
+        payload = {
+            "message": message,
+            "sender": sender_id,
+            "recipients": list(self.active_connections.keys())
+        }
+        
+        for connection in self.active_connections.values():
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                logger.error(f"Failed to send message to client: {str(e)}")
+        
+        await self.notify_webhook("message", sender_id, payload)
 
 manager = ConnectionManager()

@@ -24,5 +24,5 @@ class Bcryptprovider(HashService):
             logger.error(f"{err} {password=} {hashed_password=}")
             raise err
         
-    async def hash_password(self, password):
-        self.pwd_context.hash(password)
+    async def hash_password(self, password:str) ->str:
+        return self.pwd_context.hash(password)

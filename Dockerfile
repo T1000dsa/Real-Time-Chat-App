@@ -10,6 +10,8 @@ ENV PYTHONFAULTHANDLER=1 \
 WORKDIR /app
 
 COPY requirements.txt .
+
+RUN apt-get update && apt-get install -y wait-for-it
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
@@ -21,3 +23,8 @@ EXPOSE 8000
 
 RUN echo "Environment variables in container:" && \
     printenv
+
+COPY db_init.py .
+
+# Entrypoint that runs migrations then starts the app
+CMD ["sh", "-c", "python db_init.py && uvicorn src.main:app --host 0.0.0.0 --port 8000"]

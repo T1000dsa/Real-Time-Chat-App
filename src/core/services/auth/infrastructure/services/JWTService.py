@@ -1,10 +1,13 @@
-from fastapi import Response
+from fastapi import Response, Request, HTTPException
 from datetime import timedelta, datetime, timezone
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from src.core.services.auth.domain.interfaces.TokenService import TokenService
 from src.core.config.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class JWTService(TokenService):
@@ -48,10 +51,19 @@ class JWTService(TokenService):
             self.REFRESH_TYPE:refresh_token
             }
     
-    async def verify_token(self, token: str) -> dict:
+    async def verify_token(self, request:Request, token_type:str) -> dict:
         # Validates JWT signature and expiry
+        token = request.cookies.get(token_type)
         return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
     
+    async def verify_token_id(self, request: Request, token_type: str) -> int:
+        token = request.cookies.get(token_type)
+        if not token:
+            raise HTTPException(status_code=401, detail="Token missing")
+        
+        unverified = jwt.decode(str(token), self.secret_key, algorithms=[self.algorithm], options={'verify_exp': False})
+        return int(unverified.get('sub'))
+            
     async def rotate_tokens(
         self, 
         session: AsyncSession,

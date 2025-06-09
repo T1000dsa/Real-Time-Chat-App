@@ -1,19 +1,27 @@
-#!/bin/bash  
-# "Alembic Docker Hack Attack"  
+#!/bin/bash
+set -e
 
-echo "🔥 Spinning up temp DB..."  
-docker run --rm --name temp_db -e POSTGRES_PASSWORD=temp -d postgres  
+# Load environment variables from .env file
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
 
-echo "😴 Waiting for DB to wake up..."  
-while ! docker exec temp_db pg_isready -U postgres; do  
-  sleep 1  
-done  
+echo "🚀 Starting PostgreSQL container..."
+docker-compose up -d db
 
-echo "📦 Generating revision..."  
-alembic revision --autogenerate -m "Initial tables (Docker-proofed)"  
+echo "😴 Waiting for PostgreSQL to be ready..."
+while ! docker-compose exec db pg_isready -U ${FAST__DB__USER} -d ${FAST__DB__NAME}; do
+  sleep 1
+done
 
-echo "💀 Killing temp DB..."  
-docker stop temp_db  
-sleep 10
+echo "🔍 Checking for existing migrations..."
+if [ ! -d "alembic/versions" ] || [ -z "$(ls -A alembic/versions)" ]; then
+  echo "📦 Generating initial migration..."
+  docker-compose run --rm backend alembic revision --autogenerate -m "initial tables"
+fi
 
-echo "✅ Done. Now rebuild your *real* Docker setup."  
+echo "🔄 Applying migrations..."
+docker-compose run --rm backend alembic upgrade head
+
+echo "✅ Database initialization complete!"
+sleep 1

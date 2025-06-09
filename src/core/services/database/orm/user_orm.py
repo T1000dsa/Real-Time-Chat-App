@@ -6,7 +6,7 @@ import logging
 
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.User import UserSchema
-from src.core.services.auth.domain.interfaces.HashService import HashService
+from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 
 
 logger = logging.getLogger(__name__)
@@ -30,10 +30,10 @@ async def select_data_user_id(
 
 async def select_data_user(
     session: AsyncSession,
-    username: str
+    login: str
 ) -> Optional[UserModel]:
     try:
-        query = select(UserModel).where(UserModel.username == username)
+        query = select(UserModel).where(UserModel.login == login)
         result = await session.execute(query)
         data_user =  result.scalar_one_or_none()
         if not data_user:
@@ -62,13 +62,14 @@ async def select_user_email(
 async def insert_data_user(
     session: AsyncSession,
     data: UserSchema,
-    hash_service:HashService
+    hash_service:Bcryptprovider
 ) -> Optional[UserModel]:
     try:
         res = UserSchema.model_validate(data, from_attributes=True)
         user_data = {i: k for i, k in res.model_dump().items() if i != 'password_again'}
+        logger.debug(f"{user_data=}")
         new_data = UserModel(**user_data)
-        new_data.password = hash_service.hash_password(new_data.password)
+        new_data.password = await hash_service.hash_password(new_data.password)
         session.add(new_data)
         await session.commit()
         await session.refresh(new_data)
@@ -78,6 +79,7 @@ async def insert_data_user(
         
     except IntegrityError as err:
         logger.info(f'{err}') # user already exists
+        await session.rollback()
         raise err
         
     except Exception as e:
@@ -99,7 +101,9 @@ async def update_data_user(
 
 async def user_activate(session:AsyncSession, user_id:int, activate:bool):
     query = select(UserModel).where(UserModel.id == user_id)
-    user = (await session.execute(query)).scalar_one_or_none()
+    res = await session.execute(query)
+    user = res.scalar_one_or_none()
+    logger.debug(f'{user=}')
 
     if user is None:
         raise ValueError(f"User with id {user_id} not found")
