@@ -1,21 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>{{ title }}</h1>
-<div class="login-form">
-    {% if template_action %}
-        <form action="{{ template_action }}" method="post" enctype="multipart/form-data">
-            {{ error }}<br>
-            <!-- Username Field -->
-            <label for="login">Login:</label>
-            <input type="text" id="login" name="login" value="{{ form_data.login }}" required><br><br>
+{% if errors %}
+    <div class="alert alert-danger">{{ errors }}</div>
+{% endif %}
 
-            <!-- Password Field -->
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" value="{{ form_data.password }}"required><br><br> 
-
-            <!-- Submit Button -->
-            <button type="submit">Log in</button>
-        </form>
-    {% endif %}
-</div>
+<form method="post" enctype="multipart/form-data">
+    <!-- No need for template_action since we're posting to same URL -->
+    
+    <!-- Login Field -->
+    <label for="login">Login:</label>
+    <input type="text" id="login" name="login" 
+           value="{{ form_data.login if form_data else '' }}" required>
+    
+    <!-- Password Field -->
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required>
+    
+    <!-- Submit Button -->
+    <button type="submit">Log in</button>
+</form>
 {% endblock %}

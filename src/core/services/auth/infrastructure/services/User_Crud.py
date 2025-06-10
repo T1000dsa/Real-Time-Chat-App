@@ -2,7 +2,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.services.auth.domain.models.user import UserModel
-from src.core.schemas.User import UserSchema
+from src.core.schemas.user import UserSchema
 from src.core.services.auth.domain.interfaces import UserRepository
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.database.orm.user_orm import (

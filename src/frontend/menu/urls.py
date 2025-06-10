@@ -8,7 +8,8 @@ menu_items = [
     {'title':'Registration',  'url': f'{prefix}/register'},
     {'title':'Login','url':f'{prefix}/login'},
     {'title':'Logout','url':f'{prefix}/logout'},
-    {'title':'Chat Room', 'url':f'{prefix}/chat_room'}
+    {'title':'Chat Room', 'url':f'{prefix}/chat_room'},
+    {'title':'Profile','url':f'{prefix}/profile'},
 ]
 
 def get_menu():

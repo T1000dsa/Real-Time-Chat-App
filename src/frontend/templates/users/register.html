@@ -1,24 +1,40 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>{{ title }}</h1>
+{% if errors %}
+    <div class="alert alert-danger">{{ errors }}</div>
+{% endif %}
+
 <div class="registration-form">
-    <form action="{{ template_action }}" method="post" enctype="multipart/form-data">
-        {{ errors }}<br>
-        <label for="login">login:</label>
+    <form method="post" enctype="multipart/form-data">
+        <!-- Login Field -->
+        <label for="login">Login:</label>
         <input type="text" id="login" name="login" value="{{ form_data.login }}" required><br><br>
 
         <!-- Password Field -->
         <label for="password">Password:</label>
-        <input type="password" id="password" name="password" value="{{ form_data.password }}" required><br><br> 
+        <input type="password" id="password" name="password" value="{{ form_data.password }}" required><br><br>
 
+        <!-- Confirm pass Field -->
         <label for="password">Confirm Password:</label>
         <input type="password" id="password_again" name="password_again" required><br><br>
 
         <!-- Email Field -->
-        <label for="mail">Email (optional):</label>
-        <input type="text" id="mail" name="mail" value="{{ form_data.mail }}"><br><br>
+        <label for="email">Email:</label>
+        <input type="email" id="mail" name="email" value="{{ form_data.email }}" required><br><br>
+
+        <!-- Username pass Field -->
+        <label for="username">Username (optional):</label>
+        <input type="username" id="username" name="username" value="{{ form_data.username }}"><br><br>
+
+        <!-- Bio pass Field -->
+        <label for="bio">Bio (optional):</label>
+        <input type="bio" id="bio" name="bio" value="{{ form_data.bio }}"><br><br>
 
         <button type="submit">Register</button>
     </form>
+
 </div>
+
+
 {% endblock %}

@@ -3,14 +3,13 @@ from typing import Annotated, Optional
 import logging
 
 from src.core.dependencies.db_injection import DBDI
-from src.core.services.auth.domain.interfaces import TokenService, TokenRepository, HashService, AuthRepository, UserRepository
 from src.core.services.auth.infrastructure.repositories.DatabaseTokenRepository import DatabaseTokenRepository
 from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.AuthProvider import AuthProvider
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
 from src.core.services.auth.domain.models.user import UserModel
-from src.core.exceptions.auth_exception import credentials_exception, inactive_user_exception
+from src.core.exceptions.auth_exception import auth_demand_exception, inactive_user_exception
 
 
 logger = logging.getLogger(__name__)
@@ -57,17 +56,14 @@ async def get_current_user(
 ) -> UserModel:
     if token is None:
         logger.info('Someone tried to reach endpoint')
-        raise credentials_exception
+        raise auth_demand_exception
     
-    if token is None:
-        logger.info('Someone tried to reach endpoint')
-        raise credentials_exception
     try:
         user = await auth_service.gather_user_data(request=request)
 
         if user is None:
             logger.info('Someone tried to reach endpoint')
-            raise credentials_exception
+            raise auth_demand_exception
             
     except Exception as err:
         logger.error(f'{err}')

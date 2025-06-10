@@ -22,11 +22,18 @@ async def auth_exception_handler(request: Request, exc: AuthException):
         headers=exc.headers
     )
 
-credentials_exception = AuthException(
+auth_demand_exception = AuthException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Need to authorize",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+credentials_exception = AuthException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Login or Username is invalid",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 
 inactive_user_exception = AuthException(
     detail="inactive_user",

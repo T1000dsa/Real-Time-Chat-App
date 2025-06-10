@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from logging.config import dictConfig
 import uvicorn
 import logging
 
-from src.core.config.config import settings
+from src.core.config.config import settings, media_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
@@ -32,7 +33,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing connection pool: {e}")
 
-app = FastAPI(lifespan=lifespan, title='real-time chat proj')
+app = FastAPI(lifespan=lifespan, title=settings.run.title)
 
 init_token_refresh_middleware(app)
 app.add_middleware(
@@ -43,6 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/media", StaticFiles(directory=media_root), name="media")
 
 app.include_router(heath_router)
 app.include_router(main_router)

@@ -1,12 +1,13 @@
 from fastapi import Response, Request
 import logging
 
-from src.core.schemas.User import UserSchema
+from src.core.schemas.user import UserSchema
 from src.core.services.auth.domain.interfaces import AuthRepository
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
+from src.core.exceptions.auth_exception import credentials_exception, inactive_user_exception
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +30,14 @@ class AuthProvider(AuthRepository):
         user:UserModel = await self._repo.get_user_for_auth(login)
         if not user:
             #raise KeyError('user not found') # Temporary. Raise with expept factory, not from credential 
-            return {}
+            raise credentials_exception
         logger.debug(f'{user.login} verificated')
         
         # Second step
         res = await self._hash.verify_password(password, user.password)
         if not res:
             #raise KeyError('username or password not matched') # actually username(login) is matched, just making vague response for security
-            return {}
+            return credentials_exception
         logger.debug(f'{user.login} password is correct')
         
         # Third step 
@@ -48,7 +49,6 @@ class AuthProvider(AuthRepository):
         # activate user
         await self._repo.activate_user(user.id)
         logger.debug(f'User {user.login} activated')
-
         return tokens
     
     async def register_user(self, user_data:UserSchema) -> None:
@@ -61,7 +61,6 @@ class AuthProvider(AuthRepository):
     async def set_cookies(self, response:Response, tokens:dict) -> Response:
         settle = await self._token.set_secure_cookies(response, tokens)
         return settle
-        
 
     async def logout(self, request:Request,  response:Response) -> Response:
         # gain token from request cookies
@@ -69,3 +68,5 @@ class AuthProvider(AuthRepository):
         # disable user
         await self._repo.disable_user(verified_token)
         return await self._token.clear_tokens(response)
+    
+    #async def password_change(email:str):pass

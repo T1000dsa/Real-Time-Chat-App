@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path 
 from fastapi.templating import Jinja2Templates
+import os
 
 from src.core.config.models import (
     RunConfig, 
@@ -16,6 +17,12 @@ from src.core.config.models import (
 base_dir = Path(__file__).parent.parent.parent
 frontend_root = base_dir / 'frontend' / 'templates'
 templates = Jinja2Templates(directory=frontend_root)
+
+media_root = base_dir / 'media'
+default_picture_none =  '/media/Not_exist.png'
+max_file_size = 10 * 1024**2 # 10 mb
+
+os.makedirs(media_root, exist_ok=True)
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(

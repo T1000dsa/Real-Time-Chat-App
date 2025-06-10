@@ -10,6 +10,7 @@ from typing import Optional, List, TYPE_CHECKING
 import logging
 
 from src.core.services.database.models.base import Base, int_pk, created_at, updated_at
+from src.core.config.config import default_picture_none
 
 if TYPE_CHECKING:
     from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
@@ -23,11 +24,12 @@ class UserModel(Base):
     id: Mapped[int_pk]
     login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(128), nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=True)
     join_date: Mapped[created_at]
     last_time_login: Mapped[updated_at]
     is_active:Mapped[bool] = mapped_column(default=False)
     is_superuser: Mapped[bool] = mapped_column(default=False)
+    photo: Mapped[str] = mapped_column(default=default_picture_none, nullable=True)
 
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         back_populates="user",
@@ -58,3 +60,8 @@ class UserModel(Base):
         for token in self.refresh_tokens:
             if token.device_info == device_info:
                 token.revoked = True
+    @property
+    def photo_url(self):
+        if self.photo and not self.photo.startswith('http'):
+            return f"/media/{self.photo}"
+        return self.photo or default_picture_none

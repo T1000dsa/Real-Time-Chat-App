@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator, SecretStr, EmailStr
 
+
 class RunConfig(BaseModel):
     """
     host:str default - 127.0.0.1
@@ -7,6 +8,7 @@ class RunConfig(BaseModel):
     """
     host:str = '127.0.0.1'
     port:int = 8000
+    title:str = 'real-time chat proj'
 
 class ApiPrefix_V1(BaseModel):
     """

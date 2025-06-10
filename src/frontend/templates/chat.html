@@ -16,11 +16,20 @@
     <button onclick="sendMessage()">Send</button>
 </div>
 
+{{websocket_url}}
+<script>console.log("WebSocket URL:", "{{ websocket_url }}");</script>
+
 <script>
+
+
+
     const client_id = "{{ client_id }}";
-    const ws_url = "{{ websocket_url }}";
+    const ws_url = "{{ websocket_url }}"  === 'https:';
+        "wss://" + window.location.host + "/ws/" + client_id
+        "ws://" + window.location.host + "/ws/" + client_id;
     const statusElement = document.getElementById('connection-status');
     const chatElement = document.getElementById('chat');
+
     
     console.log(`Attempting to connect to WebSocket at ${ws_url}`);
     const ws = new WebSocket(ws_url);
@@ -40,20 +49,16 @@
 
     // Listen for messages
     ws.onmessage = function(event) {
-        console.log('Message received:', event.data);
+    try {
+        const data = JSON.parse(event.data);
         const message = document.createElement('div');
-        
-        try {
-            const data = JSON.parse(event.data);
-            message.textContent = data.message;
-            message.className = data.type === 'system' ? 'system-message' : 'user-message';
-        } catch {
-            message.textContent = event.data;
-            message.className = event.data.includes("System:") ? 'system-message' : 'user-message';
-        }
-        
+        message.textContent = `${data.sender_name}: ${data.content}`;
+        message.className = 'user-message';
         chatElement.appendChild(message);
-        chatElement.scrollTop = chatElement.scrollHeight;
+    } catch (e) {
+        console.error('Error parsing message:', e);
+    }
+    chatElement.scrollTop = chatElement.scrollHeight;
     };
 
     // Connection closed
@@ -71,15 +76,19 @@
     };
 
     function sendMessage() {
-        const input = document.getElementById('messageInput');
-        const message = input.value.trim();
-        
-        if (message !== '') {
-            console.log('Sending message:', message);
-            ws.send(message);
-            input.value = '';
-        }
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (message !== '' && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: "message",
+            content: message,
+            sender_id: client_id
+        }));
+        input.value = '';
+        }   
     }
+
 
     // Allow sending with Enter key
     document.getElementById('messageInput').addEventListener('keypress', function(e) {

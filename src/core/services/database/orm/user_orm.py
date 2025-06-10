@@ -5,7 +5,7 @@ from typing import Union, Optional
 import logging
 
 from src.core.services.auth.domain.models.user import UserModel
-from src.core.schemas.User import UserSchema
+from src.core.schemas.user import UserSchema
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 
 
@@ -126,3 +126,21 @@ async def delete_data_user(session:AsyncSession, user_id:int):
         logger.critical(err)
         await session.rollback()
         raise err
+    
+async def update_profile_file(session:AsyncSession, user:UserModel, data_dict:dict) -> None:
+    logger.debug(f"{data_dict=}")
+    try:
+        old_photo = user.photo
+        user.email = data_dict.get('email')
+        user.photo = data_dict.get('photo')
+        if user.photo != old_photo:
+            if user.photo is None:
+                user.photo = old_photo
+
+        await session.commit()
+        await session.refresh(user)
+
+    except Exception as e:
+        logger.error(f'Error deleting user: {e}')
+        await session.rollback()
+        raise e

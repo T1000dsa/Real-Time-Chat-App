@@ -1,17 +1,30 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>{{ title }}</h1>
+<h1>{{ user.login or 'Anon' }}'s {{ title }}</h1>
+{{user.photo_url}}
 {% if user %}
-    {% if user.photo %}
-    <br><img src="{{ user.photo.url }}"  width="200" height="200">
+    <form method="post" enctype="multipart/form-data">
+        <br><img src="{{ user.photo_url }}" width="200" height="200"><br>
+        
+        
+        <label for="photo">Change Profile Photo:</label>
+        <input type="file" id="photo" name="photo"><br>
+        
+        
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" value="{{ user.email }}"><br>
+        
+
+        <button type="submit">Save Changes</button>
+    </form>
+    
+    <hr>
+    <p>Join Date: {{ user.join_date }}</p>
+    {% if user.is_active %}
+        <p>User {{user.login}} is active now</p>
     {% else %}
-    <br><img src="{{ default_image }}"  width="200" height="200">
-    {% endif %}<br>
-    {{ user.username }}<br>
-    {{ user.mail }}<br>
-    <textarea>{{ user.bio }}</textarea><br>
-    {{ user.join_data }}<br>
-    {{ user.last_time_login }}<br>
+        <p>Last Login: {{ user.last_time_login }}</p>
+    {% endif %}
     <hr>
 {% endif %}
 {% endblock %}

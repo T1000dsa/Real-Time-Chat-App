@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from src.core.services.auth.domain.models.user import UserModel
-from src.core.schemas.User import UserSchema
+from src.core.schemas.user import UserSchema
 
 
 class UserRepository(ABC):  # Handles ONLY user persistence
