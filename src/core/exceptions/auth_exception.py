@@ -30,7 +30,7 @@ auth_demand_exception = AuthException(
 
 credentials_exception = AuthException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Login or Username is invalid",
+            detail="Login or Password is invalid",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

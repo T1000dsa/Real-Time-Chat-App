@@ -62,6 +62,4 @@ class UserModel(Base):
                 token.revoked = True
     @property
     def photo_url(self):
-        if self.photo and not self.photo.startswith('http'):
-            return f"/media/{self.photo}"
-        return self.photo or default_picture_none
+        return f"/media/{self.photo}"

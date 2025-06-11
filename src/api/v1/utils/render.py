@@ -4,10 +4,11 @@ import logging
 from src.utils.prepared_response import prepare_template
 from src.core.config.config import templates
 from src.core.services.auth.domain.models.user import UserModel
-
+from src.utils.time_check import time_checker
 
 logger = logging.getLogger(__name__)
 
+@time_checker
 async def render_login_form(
     request: Request,
     errors: str | None = None,
@@ -31,6 +32,7 @@ async def render_login_form(
     response = templates.TemplateResponse('users/login.html', template_response_body_data)
     return response
 
+@time_checker
 async def render_register_form(
     request: Request,
     errors: str | None = None,
@@ -55,6 +57,7 @@ async def render_register_form(
     response = templates.TemplateResponse('users/register.html', template_response_body_data)
     return response
 
+@time_checker
 async def render_profile_form(request: Request, user: UserModel):
     prepared_data = {
         "title": "Profile"

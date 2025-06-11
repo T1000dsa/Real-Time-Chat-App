@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+<title>{{ title }}</title>
+{% block content %}
+<h1>{{ title }}</h1>
+<p id="demo">Paragraph</p>
+<p id="demo1"></p>
+
+<script src="{{ url_for('static', path='/script.js') }}"></script>
+
+<button id="button_1" onclick="myFunction()">Try it</button>
+<button id="button_2" onclick="myFunctionBack()">Back</button>
+<button id="button_3" onclick="myFunction_1()">Dolly</button>
+<button onclick="window.print()">Print this page</button>
+{{ content }}
+{% endblock %}

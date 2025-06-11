@@ -6,7 +6,7 @@ from logging.config import dictConfig
 import uvicorn
 import logging
 
-from src.core.config.config import settings, media_root
+from src.core.config.config import settings, media_root, static_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
@@ -19,6 +19,7 @@ from src.api.v1.endpoints.chat import router as chat_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    settings.create_directories()
     dictConfig(LOG_CONFIG)
     logger = logging.getLogger(__name__)
     logger.info(f'http://{settings.run.host}:{settings.run.port}')
@@ -45,6 +46,7 @@ app.add_middleware(
 )
 
 app.mount("/media", StaticFiles(directory=media_root), name="media")
+app.mount("/static", StaticFiles(directory=static_root), name="static")
 
 app.include_router(heath_router)
 app.include_router(main_router)

@@ -8,7 +8,6 @@ import logging
 
 from src.utils.time_check import time_checker
 from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
-from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.auth_schema import RefreshToken
 
 logger = logging.getLogger(__name__)
@@ -17,11 +16,20 @@ logger = logging.getLogger(__name__)
 async def select_data_token(
     session: AsyncSession,
     hashed_token: str,
-) -> Union[RefreshTokenModel, UserModel, None]:
+) -> Optional[RefreshTokenModel]:
     try:
         stmt = select(RefreshTokenModel).where(
                     RefreshTokenModel.token == hashed_token)
-        return (await session.execute(stmt)).scalar_one_or_none()
+        res = await session.execute(stmt)
+        result = res.scalar_one_or_none()
+
+        if result.revoked:
+            return None
+        
+        if result.expires_at < datetime.now():
+            return None
+        
+        return result
 
     except SQLAlchemyError as e:
         logger.error(f"Database error in select_data: {str(e)}", exc_info=True)
@@ -121,3 +129,21 @@ async def get_refresh_token_data(session: AsyncSession, token:str) -> RefreshTok
     if freshest:
         return freshest
     logger.debug('get_refresh_token_data end')
+
+@time_checker
+async def revoke_refresh_token(session: AsyncSession, token:str) -> None:
+    logger.debug('in revoke_refresh_token')
+    try:
+        stm = (select(RefreshTokenModel).where(RefreshTokenModel.token == token))
+        result = await session.execute(stm)
+        result = result.scalar_one_or_none()
+        logger.debug(f"{result=}")
+        result.revoked = True
+        await session.commit()
+
+    except Exception as err:
+        logger.critical(f'Something unpredictable: {err}')
+        await session.rollback()
+        raise err
+
+

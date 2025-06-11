@@ -7,10 +7,12 @@ import logging
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.user import UserSchema
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
+from src.utils.time_check import time_checker
 
 
 logger = logging.getLogger(__name__)
 
+@time_checker
 async def select_data_user_id(
         session: AsyncSession,
         user_id:int
@@ -28,6 +30,7 @@ async def select_data_user_id(
         logger.error(f"Failed to select user data: {str(err)}")
         raise err
 
+@time_checker
 async def select_data_user(
     session: AsyncSession,
     login: str
@@ -45,6 +48,7 @@ async def select_data_user(
         logger.error(f"Failed to select user data: {str(err)}")
         raise err
     
+@time_checker
 async def select_user_email(
     session: AsyncSession,
     email:str
@@ -58,7 +62,7 @@ async def select_user_email(
         logger.error(f"Failed to select user data: {str(err)}")
         raise err
 
-    
+@time_checker
 async def insert_data_user(
     session: AsyncSession,
     data: UserSchema,
@@ -86,7 +90,8 @@ async def insert_data_user(
         logger.error(f'Error creating user: {e}')
         await session.rollback()
         raise e
-
+    
+@time_checker
 async def update_data_user(
             session:AsyncSession,
             data_id:int=None, 
@@ -99,6 +104,7 @@ async def update_data_user(
         await session.execute(stm)
         await session.commit()
 
+@time_checker
 async def user_activate(session:AsyncSession, user_id:int, activate:bool):
     query = select(UserModel).where(UserModel.id == user_id)
     res = await session.execute(query)
@@ -115,7 +121,7 @@ async def user_activate(session:AsyncSession, user_id:int, activate:bool):
     await session.refresh(user)
     return user
     
-
+@time_checker
 async def delete_data_user(session:AsyncSession, user_id:int):
     try:
         stm = delete(UserModel).where(UserModel.id == user_id)
@@ -127,20 +133,31 @@ async def delete_data_user(session:AsyncSession, user_id:int):
         await session.rollback()
         raise err
     
+@time_checker
 async def update_profile_file(session:AsyncSession, user:UserModel, data_dict:dict) -> None:
     logger.debug(f"{data_dict=}")
     try:
         old_photo = user.photo
-        user.email = data_dict.get('email')
-        user.photo = data_dict.get('photo')
-        if user.photo != old_photo:
-            if user.photo is None:
-                user.photo = old_photo
+        old_login = user.login
+        old_email = user.email
+
+        new_email = data_dict.get('email')
+        new_photo = data_dict.get('photo')
+        new_login = data_dict.get('login', None)
+
+        if new_login:
+            user.login = new_login
+
+        if new_email:
+            user.email = new_email
+
+        if new_photo:
+            user.photo = new_photo
 
         await session.commit()
         await session.refresh(user)
 
     except Exception as e:
-        logger.error(f'Error deleting user: {e}')
+        logger.error(f'Error update_profile_file user: {e}')
         await session.rollback()
         raise e

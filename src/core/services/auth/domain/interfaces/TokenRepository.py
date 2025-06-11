@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-class TokenRepository(ABC):
-    @abstractmethod
-    async def is_token_revoked(self, session: AsyncSession, token: str) -> bool: ...
+from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
 
+
+class TokenRepository(ABC):
     @abstractmethod
     async def store_refresh_token(
         self,
@@ -16,4 +16,6 @@ class TokenRepository(ABC):
     ) -> None: ...
 
     @abstractmethod
-    async def revoke_token(self, session: AsyncSession, token:str): ...
+    async def revoke_token(self, session, token: str) -> None: ...
+
+    async def verificate_refresh_token(self, session, token:str) -> Optional[RefreshTokenModel]: ...

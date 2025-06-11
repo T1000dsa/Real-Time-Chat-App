@@ -5,7 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from src.core.services.auth.domain.interfaces.TokenService import TokenService
+from src.core.services.auth.infrastructure.repositories.DatabaseTokenRepository import DatabaseTokenRepository
 from src.core.config.config import settings
+from src.utils.time_check import time_checker
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,7 @@ class JWTService(TokenService):
         self.REFRESH_TYPE = 'refresh'
         self.CSRF_TYPE = 'csrf'
 
+    @time_checker
     async def create_token(self, data: dict, expires_delta: timedelta, token_type: str) -> str:
         """Base function for all tokens"""
         to_encode = data.copy()
@@ -34,6 +37,7 @@ class JWTService(TokenService):
         })
         return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
     
+    @time_checker
     async def create_tokens(self, data:dict) -> dict:
         access_token = await self.create_token(
             data=data, 
@@ -51,11 +55,13 @@ class JWTService(TokenService):
             self.REFRESH_TYPE:refresh_token
             }
     
+    @time_checker
     async def verify_token(self, request:Request, token_type:str) -> dict:
         # Validates JWT signature and expiry
         token = request.cookies.get(token_type)
         return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
     
+    @time_checker
     async def verify_token_id(self, request: Request, token_type: str) -> int:
         token = request.cookies.get(token_type)
         if not token:
@@ -63,14 +69,18 @@ class JWTService(TokenService):
         
         unverified = jwt.decode(str(token), self.secret_key, algorithms=[self.algorithm], options={'verify_exp': False})
         return int(unverified.get('sub'))
-            
+    
+    @time_checker   
     async def rotate_tokens(
         self, 
         session: AsyncSession,
-        refresh_token: str
+        refresh_token: str, 
+        token_repo:DatabaseTokenRepository
     ) -> dict:
-        pass
-
+        """
+        1. Token Verification
+        """
+    @time_checker
     async def set_secure_cookies(self, response:Response, tokens:dict) -> Response:
         """This method should to set cookies in response body"""
         
@@ -110,6 +120,7 @@ class JWTService(TokenService):
 
         return response
 
+    @time_checker
     async def clear_tokens(self, response: Response) -> Response: 
         """This method should to purge all tokens"""
         response.delete_cookie(self.ACCESS_TYPE)

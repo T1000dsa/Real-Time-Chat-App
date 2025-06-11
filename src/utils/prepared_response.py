@@ -2,7 +2,9 @@ from typing import Any
 
 from src.core.schemas.template_schema import TemplateData
 from src.frontend.menu.urls import menu_items, choice_from_menu
+from src.utils.time_check import time_checker
 
+@time_checker
 async def prepare_template(
         data:dict[str, Any], 
         additional_data:dict[str, Any] = None

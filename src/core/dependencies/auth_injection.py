@@ -14,12 +14,15 @@ from src.core.exceptions.auth_exception import auth_demand_exception, inactive_u
 
 logger = logging.getLogger(__name__)
 
+# JWT-service
 def get_token_service() -> JWTService:
     return JWTService()
 
+# database operations
 def get_token_repo() -> DatabaseTokenRepository:
     return DatabaseTokenRepository()
 
+# Hash operations
 def get_hash_service() -> Bcryptprovider:
     return Bcryptprovider()
 
@@ -29,6 +32,7 @@ def get_token_from_cookie(
         ) -> Optional[str]:
     return request.cookies.get(jwt_service.ACCESS_TYPE)
 
+# User service
 def get_user_repo(
         session:DBDI, 
         hash_service = Depends(get_hash_service)
@@ -38,17 +42,21 @@ def get_user_repo(
         hash_service=hash_service
         )
 
+# Main provider
 def get_auth_provider(
         user_repo = Depends(get_user_repo), 
         hash_service = Depends(get_hash_service),
         token_service = Depends(get_token_service),
+        db_repo = Depends(get_token_repo)
         ) -> AuthProvider:
     return AuthProvider(
         user_repo=user_repo, 
         hash_service=hash_service, 
-        token_service=token_service
+        token_service=token_service,
+        db_repo=db_repo
         )
 
+# Current user dependency
 async def get_current_user(
     request:Request,
     token: str = Depends(get_token_from_cookie),
@@ -71,6 +79,7 @@ async def get_current_user(
         
     return user
 
+# Current activated user dependency
 async def get_current_active_user(
     current_user: UserModel = Depends(get_current_user)
 ) -> UserModel:
@@ -78,6 +87,20 @@ async def get_current_active_user(
         logger.info('Someone tried to reach endpoint')
         raise inactive_user_exception
     return current_user
+
+# Auth provider factory for middleware
+def create_auth_provider(db_session):
+    token_service = JWTService()
+    hash_service = Bcryptprovider()
+    token_repo = DatabaseTokenRepository()
+    user_service = UserService(session=db_session, hash_service=hash_service)
+
+    return AuthProvider(
+        user_repo=user_service,
+        hash_service=hash_service,
+        token_service=token_service,
+        db_repo=token_repo
+    )
 
 AuthDependency = Annotated[AuthProvider, Depends(get_auth_provider)]
 GET_CURRENT_USER = Annotated[UserModel, Depends(get_current_user)]
