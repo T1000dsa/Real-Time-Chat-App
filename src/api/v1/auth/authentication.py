@@ -33,7 +33,7 @@ async def handle_login(
     password: str = Form(...),
 ):
     """Handle POST requests for login form submission"""
-    logger.debug(f"{login=} {password=}")
+
     form_data = {'login': login, 'password': password}
     try:
         tokens = await auth_service.authenticate_user(
@@ -129,11 +129,11 @@ async def logout(
     request: Request,
     auth_service: AuthDependency
 ):
-    response = RedirectResponse(url='/')
-    logger.debug('Tring to logout...')
+
+    logger.debug('Trying to logout...')
     
     try:
-        response = await auth_service.logout(request=request, response=response)
+        response = await auth_service.logout(request=request)
 
     except Exception as e:
         logger.debug(f"Unexpected error: {e}")
@@ -150,7 +150,7 @@ async def profile(request: Request, curr_user: GET_CURRENT_ACTIVE_USER):
 async def update_profile(
     request: Request,
     curr_user: GET_CURRENT_ACTIVE_USER,
-    db:DBDI,
+    auth:AuthDependency,
     email: str = Form(None),
     login: str = Form(None),
     photo: UploadFile = File(None)
@@ -162,6 +162,6 @@ async def update_profile(
         # Handle file upload (you'll need to implement this)
         photo_url = await handle_photo_upload(photo, curr_user)
         
-    await update_profile_file(db, curr_user, {'email':email,'photo':photo_url, 'login':login})
-    
+         #update_profile_file(db, curr_user, {'email':email,'photo':photo_url, 'login':login})
+    await auth.update_profile_user(curr_user.id, {'email':email,'photo':photo_url, 'login':login})
     return RedirectResponse(f'{main_prefix}/profile', status_code=303)

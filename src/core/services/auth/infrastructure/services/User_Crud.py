@@ -1,5 +1,6 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.user import UserSchema
@@ -12,10 +13,14 @@ from src.core.services.database.orm.user_orm import (
     insert_data_user, 
     delete_data_user, 
     update_data_user,
-    user_activate
+    user_activate,
+    update_profile_file, 
+    update_password_by_email
     )
 from src.utils.time_check import time_checker
 
+
+logger = logging.getLogger(__name__)
 
 class UserService(UserRepository):
     def __init__(self, session: AsyncSession, hash_service: Bcryptprovider):
@@ -50,3 +55,19 @@ class UserService(UserRepository):
     @time_checker
     async def disable_user(self, user_id: int) -> None:
         await user_activate(self.session, user_id, False)
+        
+    @time_checker
+    async def update_profile(self, user_id:int, data:dict):
+        user = await select_data_user_id(self.session, user_id)
+        await update_profile_file(self.session, user, data)
+
+    @time_checker
+    async def change_password_email(self, email:str, new_pass:str) -> None:
+        user = select_user_email(self.session, email)
+        try:
+            if user:
+                await update_password_by_email(self.session, user, new_pass)
+        except Exception as err:
+            logger.error(err)
+
+        

@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.core.config.config import settings
+from src.utils.time_check import time_checker
 
 
 class DbHelper:
@@ -34,12 +35,15 @@ class DbHelper:
             autoflush=False,
             expire_on_commit=False,
         )
+
     async def dispose(self) -> None:
         await self.engine.dispose()
     
+
     async def session_getter(self) -> AsyncGenerator[AsyncSession, None]:
         async with self.session_factory() as session:
             yield session
+
 
     @asynccontextmanager
     async def async_session(self):

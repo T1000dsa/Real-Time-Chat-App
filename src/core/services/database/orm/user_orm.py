@@ -161,3 +161,18 @@ async def update_profile_file(session:AsyncSession, user:UserModel, data_dict:di
         logger.error(f'Error update_profile_file user: {e}')
         await session.rollback()
         raise e
+    
+async def update_password_by_email(session:AsyncSession, user:UserModel, new_pass:str):
+    try:
+        if 129 > len(new_pass) > 0:
+            user.password = new_pass
+        else:
+            raise KeyError('Password cant be more 128 or less than 0 characters')
+            
+        await session.commit()
+        await session.refresh(user)
+
+    except Exception as err:
+        logger.error(err)
+        await session.rollback()
+        raise err

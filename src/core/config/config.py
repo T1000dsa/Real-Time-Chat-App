@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     
     @property
     def default_picture_none(self) -> Path:
-        return self.media_root / 'Not_exist.png'
+        return 'Not_exist.png'
 
 settings = Settings()
 

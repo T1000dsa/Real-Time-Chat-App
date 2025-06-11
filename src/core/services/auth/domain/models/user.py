@@ -24,7 +24,7 @@ class UserModel(Base):
     id: Mapped[int_pk]
     login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(128), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True)
     join_date: Mapped[created_at]
     last_time_login: Mapped[updated_at]
     is_active:Mapped[bool] = mapped_column(default=False)

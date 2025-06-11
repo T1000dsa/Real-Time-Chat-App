@@ -29,3 +29,9 @@ class UserRepository(ABC):  # Handles ONLY user persistence
 
     @abstractmethod
     async def disable_user(self, user_id: int) -> None: ...
+
+    @abstractmethod
+    async def update_profile(self, user_id:int, data:dict): ...
+    
+    @abstractmethod
+    async def change_password_email(self, email:str, new_pass:str) -> None: ...

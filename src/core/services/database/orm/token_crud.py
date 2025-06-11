@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy import select, update, delete, join
 from typing import Union, Optional, Type
 from datetime import datetime, timezone
+from jose.exceptions import ExpiredSignatureError
 import logging
 
 from src.utils.time_check import time_checker
@@ -22,12 +23,9 @@ async def select_data_token(
                     RefreshTokenModel.token == hashed_token)
         res = await session.execute(stmt)
         result = res.scalar_one_or_none()
-
-        if result.revoked:
-            return None
         
-        if result.expires_at < datetime.now():
-            return None
+        if result.expires_at < datetime.now(timezone.utc):
+            raise ExpiredSignatureError
         
         return result
 

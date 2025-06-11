@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 class TokenService(ABC):
     @abstractmethod
     async def create_token(self, data:dict, expires_delta:timedelta, token_type:str): ...
@@ -14,13 +15,15 @@ class TokenService(ABC):
     async def verify_token(self, request:Request, token_type:str) -> dict: ...
 
     @abstractmethod 
-    async def verify_token_id(self, request:Request, token_type:str) -> int: ...
+    async def verify_token_unsafe(self, request: Request, token_type: str) -> dict: ...
 
     @abstractmethod
     async def rotate_tokens(
         self, 
+        request:Request,
         session: AsyncSession,
-        refresh_token: str
+        refresh_token: str, 
+        token_repo
     ) -> dict: ...
     
     @abstractmethod
