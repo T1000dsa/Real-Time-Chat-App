@@ -23,10 +23,6 @@ async def select_data_token(
                     RefreshTokenModel.token == hashed_token)
         res = await session.execute(stmt)
         result = res.scalar_one_or_none()
-        
-        if result.expires_at < datetime.now(timezone.utc):
-            raise ExpiredSignatureError
-        
         return result
 
     except SQLAlchemyError as e:
@@ -36,29 +32,55 @@ async def select_data_token(
             detail="Database error"
         )
     
-@time_checker
-async def insert_data_token(
+async def new_token_insert(
     session: AsyncSession,
-    token_model: RefreshToken
-) -> RefreshTokenModel:
-    """Properly handles refresh token insertion with error handling"""
+    token_scheme:RefreshToken
+):
     try:
         token_model_res = RefreshTokenModel(
-            user_id=token_model.user_id,
-            token=token_model.token,
-            expires_at=token_model.expires_at,
-            revoked=token_model.revoked,
-            replaced_by_token=token_model.replaced_by_token,
-            family_id=token_model.family_id,
-            previous_token_id=token_model.previous_token_id,
-            # created_at is automatically set by the model
-            device_info=token_model.device_info if hasattr(token_model, 'device_info') else None
+            token=token_scheme.token,
+            expires_at=token_scheme.expires_at,
+            revoked=token_scheme.revoked,
+            replaced_by_token=token_scheme.replaced_by_token,
+            family_id=token_scheme.family_id,
+            device_info=token_scheme.device_info,
+            previous_token_id=token_scheme.previous_token_id,
+            user_id=token_scheme.user_id
         )
-        
+
         session.add(token_model_res)
         await session.commit()
         await session.refresh(token_model_res)
         return token_model_res
+    
+    except IntegrityError as err:
+        await session.rollback()
+        logger.error(f"Database integrity error: {err}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred"
+        )
+    
+    except Exception as err:
+        await session.rollback()
+        logger.error(err)
+        raise err
+
+@time_checker
+async def update_data_token(
+    session: AsyncSession,
+    token_scheme: RefreshToken,
+    old_token_scheme: RefreshToken
+) -> RefreshTokenModel:
+    """Properly handles refresh token insertion with error handling"""
+    try:
+        old_token_model = await select_data_token(session,old_token_scheme.token)
+        old_token_model.revoked = True
+        old_token_model.replaced_by_token = token_scheme.token
+        session.add(old_token_model)
+
+        await session.commit()
+        await session.refresh(old_token_model)
         
     except IntegrityError as err:
         await session.rollback()

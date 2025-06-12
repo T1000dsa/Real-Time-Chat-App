@@ -41,7 +41,7 @@ class RefreshTokenModel(Base):
         nullable=False
     )
     family_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    device_info: Mapped[Optional[str]] = mapped_column(String(200))
+    device_info: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     previous_token_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("refresh_tokens.id"), 
         nullable=True

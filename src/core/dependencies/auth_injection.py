@@ -34,22 +34,22 @@ def get_token_from_cookie(
 
 # User service
 def get_user_repo(
-        session:DBDI, 
         hash_service = Depends(get_hash_service)
         ) -> UserService:
     return UserService(
-        session=session, 
         hash_service=hash_service
         )
 
 # Main provider
 def get_auth_provider(
+        session:DBDI, 
         user_repo = Depends(get_user_repo), 
         hash_service = Depends(get_hash_service),
         token_service = Depends(get_token_service),
         db_repo = Depends(get_token_repo)
         ) -> AuthProvider:
     return AuthProvider(
+        session=session,
         user_repo=user_repo, 
         hash_service=hash_service, 
         token_service=token_service,
@@ -93,9 +93,10 @@ def create_auth_provider(db_session):
     token_service = JWTService()
     hash_service = Bcryptprovider()
     token_repo = DatabaseTokenRepository()
-    user_service = UserService(session=db_session, hash_service=hash_service)
+    user_service = UserService(hash_service=hash_service)
 
     return AuthProvider(
+        session=db_session,
         user_repo=user_service,
         hash_service=hash_service,
         token_service=token_service,

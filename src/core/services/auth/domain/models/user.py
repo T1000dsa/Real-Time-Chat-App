@@ -22,7 +22,7 @@ class UserModel(Base):
     __tablename__ = 'users'
 
     id: Mapped[int_pk]
-    login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(128), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True)
     join_date: Mapped[created_at]

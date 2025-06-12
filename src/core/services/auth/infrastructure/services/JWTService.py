@@ -51,7 +51,7 @@ class JWTService(TokenService):
             data=data, 
             expires_delta=self.REFRESH_TOKEN_EXPIRE, 
             token_type=self.REFRESH_TYPE
-            )
+            )    
         return {
             self.ACCESS_TYPE:access_token, 
             self.REFRESH_TYPE:refresh_token
@@ -82,52 +82,86 @@ class JWTService(TokenService):
         self, 
         request:Request,
         session: AsyncSession,
-        token_repo:DatabaseTokenRepository
+        db_repo:DatabaseTokenRepository
     ) -> Optional[dict]:
         """
         1. Token Verification
         2. If access token expired - > make new access token, if refresh token expired - > make both
         3. return token/tokens
         """
-        new_access_token = None
-        new_tokens = None
         try:
+            # First check refresh token (more critical)
+            refresh_token = request.cookies.get(self.REFRESH_TYPE)
+            
+            if not refresh_token: # Extremely strange and rare situation
+                return None
+                
             try:
-                # access token verification. If expired, JWT raises the ExpiredSignatureError 
-                await self.verify_token(request, self.ACCESS_TYPE) 
-                logger.info('access token is fine and not expired yet')
-                # If here, everything is okay, access not expired yet.
-            except ExpiredSignatureError as err: # Most likely would raised many times
-                logger.info(err)
-                access_data = await self.verify_token_unsafe(request, self.ACCESS_TYPE)
-                new_access_token = await self.create_token(access_data, self.ACCESS_TOKEN_EXPIRE, self.ACCESS_TYPE)
-                logger.info('New access token')
+                refresh_payload = jwt.decode(refresh_token, self.secret_key, algorithms=[self.algorithm])
+                if refresh_payload.get("type") != self.REFRESH_TYPE: # also Extremely strange and rare situation
+                    return None
+                
+            except ExpiredSignatureError:
+                # gain user data from unsafe verification (only if expired) and creating new tokens
+                user_data = await self.verify_token_unsafe(request, self.REFRESH_TYPE)
+                logger.debug('New token pair')
+                result = await self.create_tokens(user_data)
 
-            await self.verify_token(request, self.REFRESH_TYPE)
-            logger.info('refresh token is fine and not expired yet')
+                # gain old and new tokens
+                old_refresh = request.get(self.REFRESH_TYPE)
+                new_refresh = result.get(self.REFRESH_TYPE)
+                old_token = await db_repo.verificate_refresh_token(session, old_refresh)
 
-            """verified_refr_token_model = await token_repo.verificate_refresh_token(session, refresh_token)
-            if verified_refr_token_model is None:
-                pass"""
+                # building new token scheme
+                date = self.REFRESH_TOKEN_EXPIRE + datetime.now(timezone.utc)
 
-            # if here refr token not expired yet, but access may be expired
+                new_token_scheme = await db_repo.token_scheme_factory(
+                    user_id=old_token.user_id,
+                    token=refresh_token,
+                    expires_at=date,
+                    revoked=False,
+                    replaced_by_token=None,
+                    family_id=old_token.family_id,
+                    previous_token_id=old_token.id,
+                    device_info=old_token.device_info
+                )
+                # new token store
+                await db_repo.store_new_refresh_token(session, new_token_scheme)
+                
+                # update old token, revoke and replace
+                await db_repo.update_old_refresh_token(session, new_refresh, old_refresh)
+                return result
+            
+            except Exception as err:
+                logger.critical(err)
+                return None
 
-        except ExpiredSignatureError as err:
-            logger.info(err)
-            refresh_data = await self.verify_token_unsafe(request, self.REFRESH_TYPE)
-            new_tokens = await self.create_tokens(refresh_data)
-            logger.info('New pair of refresh and access tokens')
-
-        if new_tokens: # if rotation was completed, return new tokens firstly
-            logger.debug('Return new token pair')
-            return new_tokens
+            # Then check access token
+            access_token = request.cookies.get(self.ACCESS_TYPE)
+            if access_token:
+                try:
+                    jwt.decode(access_token, self.secret_key, algorithms=[self.algorithm])
+                    # Access token still valid, no rotation needed
+                    logger.debug('Access token still valid')
+                    return None
+                except ExpiredSignatureError as err:
+                    logger.info(err)
+                    # Only access token expired - issue new access token
+                    logger.debug('New access token')
+                    return {
+                        self.ACCESS_TYPE: await self.create_token(
+                            {'sub': refresh_payload['sub']},
+                            self.ACCESS_TOKEN_EXPIRE,
+                            self.ACCESS_TYPE
+                        )
+                    }
+                except Exception as err:
+                    logger.critical(err)
+                    return None
         
-        if new_access_token and new_tokens is None: # if just access token, return new_access token
-            logger.debug('Return new access')
-            return {self.ACCESS_TYPE:new_access_token}
-
-        logger.debug('return nothing')
-        return None
+        except Exception as e:
+            logger.error(f"Token rotation error: {e}")
+            return None
 
 
     @time_checker

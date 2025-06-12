@@ -2,12 +2,7 @@ from pydantic import BaseModel, field_validator
 from datetime import datetime, timezone
 from typing import Optional
 
-class Token(BaseModel):
-    """Response model for tokens"""
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
+ 
 class RefreshToken(BaseModel):
     user_id: int
     token: str

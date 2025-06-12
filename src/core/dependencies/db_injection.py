@@ -10,7 +10,6 @@ from contextlib import asynccontextmanager
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.core.config.config import settings
-from src.utils.time_check import time_checker
 
 
 class DbHelper:

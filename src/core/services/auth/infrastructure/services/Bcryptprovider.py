@@ -9,7 +9,11 @@ logger = logging.getLogger(__name__)
 
 class Bcryptprovider(HashService):
     def __init__(self):
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self.pwd_context = CryptContext(
+            schemes=["bcrypt"],
+            deprecated="auto",
+            bcrypt__ident="2b",
+            bcrypt__min_rounds=12)
 
     @time_checker
     def hash_token(self, token: str) -> str:

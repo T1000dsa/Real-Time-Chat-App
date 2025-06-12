@@ -56,7 +56,7 @@ async def handle_login(
         logger.error(f"Login failed: {err}")
         return await render_login_form(
             request, 
-            errors=str(err), 
+            errors='Something went wrong', 
             form_data=form_data
         )
 
