@@ -70,11 +70,16 @@ async def new_token_insert(
 async def update_data_token(
     session: AsyncSession,
     token_scheme: RefreshToken,
-    old_token_scheme: RefreshToken
+    old_token_model: RefreshTokenModel
 ) -> RefreshTokenModel:
     """Properly handles refresh token insertion with error handling"""
+    logger.debug(token_scheme)
+    logger.debug(type(token_scheme))
+
+    logger.debug(old_token_model)
+    logger.debug(type(old_token_model))
     try:
-        old_token_model = await select_data_token(session,old_token_scheme.token)
+
         old_token_model.revoked = True
         old_token_model.replaced_by_token = token_scheme.token
         session.add(old_token_model)

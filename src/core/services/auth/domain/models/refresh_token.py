@@ -37,11 +37,11 @@ class RefreshTokenModel(Base):
     replaced_by_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         NaiveDateTime,
-        default=lambda: datetime.utcnow(),  # Use lambda to get current time on each insert
+        default=lambda: datetime.now(timezone.utc),  # Use lambda to get current time on each insert
         nullable=False
     )
     family_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    device_info: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    device_info: Mapped[Optional[str]] = mapped_column(String(200))
     previous_token_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("refresh_tokens.id"), 
         nullable=True

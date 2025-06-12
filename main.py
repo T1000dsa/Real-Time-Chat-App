@@ -15,6 +15,7 @@ from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
 from src.api.v1.auth.authentication import router as auth_router
 from src.api.v1.endpoints.chat import router as chat_router
+from src.api.v1.auth.profile_managment import router as profile_router
 
 
 @asynccontextmanager
@@ -51,6 +52,7 @@ app.mount("/static", StaticFiles(directory=static_root), name="static")
 app.include_router(heath_router)
 app.include_router(main_router)
 app.include_router(auth_router)
+app.include_router(profile_router)
 app.include_router(chat_router)
 
 if __name__ == '__main__':

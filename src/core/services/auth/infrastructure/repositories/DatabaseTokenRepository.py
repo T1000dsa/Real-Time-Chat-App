@@ -19,7 +19,7 @@ class DatabaseTokenRepository(TokenRepository):
         await new_token_insert(session, token_schema)
 
     @time_checker
-    async def update_old_refresh_token(self, session:AsyncSession,  token:RefreshToken, old_token:RefreshToken) -> None:
+    async def update_old_refresh_token(self, session:AsyncSession,  token:RefreshToken, old_token:RefreshTokenModel) -> None:
         await update_data_token(session, token, old_token)
 
     @time_checker

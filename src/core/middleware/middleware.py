@@ -39,5 +39,4 @@ def init_token_refresh_middleware(app: FastAPI):
                 return response
 
         except Exception as e:
-            logger.error(f"Middleware error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logger.error(f"Middleware error: {str(e)}")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, UploadFile, File
+from fastapi import APIRouter, Form
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
@@ -6,12 +6,9 @@ from pydantic import ValidationError
 import logging
 
 from src.core.schemas.user import UserSchema
-from src.core.config.config import settings, main_prefix
+from src.core.config.config import main_prefix
 from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER
-from src.core.dependencies.db_injection import DBDI
 from src.api.v1.utils.render import render_login_form, render_register_form, render_profile_form
-from src.utils.file_uploader import handle_photo_upload
-from src.core.services.database.orm.user_orm import update_profile_file
 from src.utils.time_check import time_checker
 
 
@@ -56,7 +53,7 @@ async def handle_login(
         logger.error(f"Login failed: {err}")
         return await render_login_form(
             request, 
-            errors='Something went wrong', 
+            errors="Something went wrong", # 'Something went wrong'
             form_data=form_data
         )
 
@@ -138,30 +135,3 @@ async def logout(
     except Exception as e:
         logger.debug(f"Unexpected error: {e}")
     return response
-
-@time_checker
-@router.get('/profile')
-async def profile(request: Request, curr_user: GET_CURRENT_ACTIVE_USER):
-    if curr_user:
-        return await render_profile_form(request, curr_user)
-
-@time_checker
-@router.post('/profile')
-async def update_profile(
-    request: Request,
-    curr_user: GET_CURRENT_ACTIVE_USER,
-    auth:AuthDependency,
-    email: str = Form(None),
-    login: str = Form(None),
-    photo: UploadFile = File(None)
-):
-    if not curr_user:
-        return RedirectResponse(f'/{main_prefix}/login', status_code=303)
-    
-    if photo:
-        # Handle file upload (you'll need to implement this)
-        photo_url = await handle_photo_upload(photo, curr_user)
-        
-         #update_profile_file(db, curr_user, {'email':email,'photo':photo_url, 'login':login})
-    await auth.update_profile_user(curr_user.id, {'email':email,'photo':photo_url, 'login':login})
-    return RedirectResponse(f'{main_prefix}/profile', status_code=303)

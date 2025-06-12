@@ -17,16 +17,18 @@ async def index(
         "title":"Main page"
         }
     
-    add_data = {
-            "request":request
-            }
+
     
     template_response_body_data = await prepare_template(
-        data=prepared_data,
-        additional_data=add_data
+        data=prepared_data
         )
 
-    response = templates.TemplateResponse('index.html', template_response_body_data)
+    #response = templates.TemplateResponse('index.html', template_response_body_data)
+    response = templates.TemplateResponse(
+        request=request,
+        name='index.html',
+        context=template_response_body_data
+    )
     return response
 
 @router.get('/v1/playground')

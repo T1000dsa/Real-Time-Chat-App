@@ -123,25 +123,44 @@ class AuthProvider(AuthRepository):
     async def token_rotate(self, request) -> Optional[dict]:
         return await self._token.rotate_tokens(request, self.session, self._db)
 
-    
     @time_checker
-    async def logout(self, request:Request) -> Response:
-        response = RedirectResponse(url=f'{main_prefix}/login', status_code=302)
-        # gain token from request cookie
-        unverified_token_access = await self._token.verify_token_unsafe(request, self._token.ACCESS_TYPE)
-        sub = int(unverified_token_access.get('sub'))
-        token_refresh = request.cookies.get(self._token.REFRESH_TYPE)
-        user = await self._repo.get_user_for_auth_by_id(self.session, sub)
-        logger.debug(f"User {user.login} tries to logout")
+    async def logout(self, request: Request) -> Response:
+        try:
+            response = RedirectResponse(url=f'{main_prefix}/login', status_code=302)
+            
+            # Get token from request cookie
+            unverified_token_access = await self._token.verify_token_unsafe(request, self._token.ACCESS_TYPE)
+            if not unverified_token_access:
+                return await self._token.clear_tokens(response)
+                
+            sub = int(unverified_token_access.get('sub'))
+            token_refresh = request.cookies.get(self._token.REFRESH_TYPE)
+            
+            # Get user and log
+            user = await self._repo.get_user_for_auth_by_id(self.session, sub)
+            if user:
+                logger.debug(f"User {user.login} tries to logout")
+            else:
+                logger.warning(f"User with id {sub} not found during logout")
 
-        # disable user
-        await self._repo.disable_user(self.session, sub)
+            # Disable user
+            await self._repo.disable_user(self.session, sub)
 
-        # revoke token
-        await self._db.revoke_token(self.session, token_refresh)
+            # Revoke token - handle potential duplicates
+            if token_refresh:
+                try:
+                    await self._db.revoke_token(self.session, token_refresh)
+                except Exception as e:
+                    logger.error(f"Error revoking token: {str(e)}")
+                    # Still continue with logout even if token revocation fails
 
-        # Return response with cleaned cookies
-        return await self._token.clear_tokens(response)
+            # Return response with cleaned cookies
+            return await self._token.clear_tokens(response)
+            
+        except Exception as e:
+            logger.error(f"Unexpected error during logout: {str(e)}")
+            response = RedirectResponse(url=f'{main_prefix}/login', status_code=302)
+            return await self._token.clear_tokens(response)
     
     @time_checker
     async def update_profile_user(self, user_id:int,data:dict) -> None:

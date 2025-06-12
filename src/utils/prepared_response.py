@@ -11,6 +11,7 @@ async def prepare_template(
         ):
     
     template_data = TemplateData(**data).model_dump(exclude_none=True)
-    template_data.update(**additional_data)
+    if additional_data:
+        template_data.update(**additional_data)
     template_data.update({'menu':menu_items, 'menu_data':choice_from_menu})
     return template_data

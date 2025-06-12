@@ -94,11 +94,13 @@ class JWTService(TokenService):
             refresh_token = request.cookies.get(self.REFRESH_TYPE)
             
             if not refresh_token: # Extremely strange and rare situation
+                logger.error(refresh_token)
                 return None
                 
             try:
                 refresh_payload = jwt.decode(refresh_token, self.secret_key, algorithms=[self.algorithm])
                 if refresh_payload.get("type") != self.REFRESH_TYPE: # also Extremely strange and rare situation
+                    logger.error('Refresh payloads error')
                     return None
                 
             except ExpiredSignatureError:
@@ -108,16 +110,21 @@ class JWTService(TokenService):
                 result = await self.create_tokens(user_data)
 
                 # gain old and new tokens
-                old_refresh = request.get(self.REFRESH_TYPE)
+                old_refresh = request.cookies.get(self.REFRESH_TYPE)
                 new_refresh = result.get(self.REFRESH_TYPE)
                 old_token = await db_repo.verificate_refresh_token(session, old_refresh)
+
+                logger.debug(f"{new_refresh=}")
+                logger.debug(f"{old_refresh=}")
+
+                logger.debug(f"{old_token=}")
 
                 # building new token scheme
                 date = self.REFRESH_TOKEN_EXPIRE + datetime.now(timezone.utc)
 
                 new_token_scheme = await db_repo.token_scheme_factory(
                     user_id=old_token.user_id,
-                    token=refresh_token,
+                    token=new_refresh,
                     expires_at=date,
                     revoked=False,
                     replaced_by_token=None,
@@ -129,7 +136,7 @@ class JWTService(TokenService):
                 await db_repo.store_new_refresh_token(session, new_token_scheme)
                 
                 # update old token, revoke and replace
-                await db_repo.update_old_refresh_token(session, new_refresh, old_refresh)
+                await db_repo.update_old_refresh_token(session, new_token_scheme, old_token)
                 return result
             
             except Exception as err:
@@ -140,7 +147,7 @@ class JWTService(TokenService):
             access_token = request.cookies.get(self.ACCESS_TYPE)
             if access_token:
                 try:
-                    jwt.decode(access_token, self.secret_key, algorithms=[self.algorithm])
+                    await self.verify_token(request, self.ACCESS_TYPE)
                     # Access token still valid, no rotation needed
                     logger.debug('Access token still valid')
                     return None
