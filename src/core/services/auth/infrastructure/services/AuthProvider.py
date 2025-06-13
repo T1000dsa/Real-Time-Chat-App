@@ -64,7 +64,7 @@ class AuthProvider(AuthRepository):
         if not res:
             #raise KeyError('username or password not matched') # actually username(login) is matched, just making vague response for security
             logger.debug("User password is invalid")
-            return credentials_exception
+            raise credentials_exception
         logger.debug(f'{user.login} password is correct')
         
         # Third step 

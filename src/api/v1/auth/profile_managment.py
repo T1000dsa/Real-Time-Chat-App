@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse
 import logging
 
 from src.core.config.config import main_prefix
-from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER
+from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER, get_current_active_user
 from src.api.v1.utils.render_pass_flow import (
     render_pass_change, 
     render_verification_success, 
@@ -53,70 +53,94 @@ async def update_profile(
 @router.post('/password_change')
 async def password_change(
     request: Request,
-    curr_user: GET_CURRENT_ACTIVE_USER,
     auth:AuthDependency,
     email: str = Form(None),
     errors: str = None
 ):
+    user = None
+
+    try:
+        user = await get_current_active_user()
+
+    except:
+        user = await auth._repo.get_user_for_auth_by_email(auth.session, email)
+
     if request.method == 'POST':
 
         try:
-            # Trying to verificate user email, if matches -> go further if not, raise error
-            await auth._email.email_verification(auth.session, email, curr_user, auth._repo)
+            # if user authorised
+            if user:
+                # Trying to verificate user email, if matches -> go further if not, raise error
+                await auth._email.email_verification(auth.session, email, auth._repo, user)
 
-            # Trying to send verificate-link toward urer email
-            await auth._email.send_verification_email(email)
+                # Trying to send verificate-link toward urer email
+                await auth._email.send_verification_email(email)
 
-            return await render_after_send_email(request, curr_user, errors)
+                return await render_after_send_email(request, errors)
+            # in else case
+            else:
+                await auth._email.email_verification(auth.session, email, auth._repo)
+
+                await auth._email.send_verification_email(email)
+
+                return await render_after_send_email(request, errors)
 
         except KeyError as err:
             logger.error(err)
             return await render_pass_change(
                 request,
-                user=curr_user,
-                errors=str(err),
+                user=user,
+                errors=str(err.detail),
             )
 
         except Exception as err:
             logger.error(err)
             return await render_pass_change(
                 request,
-                user=curr_user,
-                errors=str(err),
+                user=user,
+                errors=str(err.detail),
             )
             
-    return await render_pass_change(request, curr_user, errors)
+    return await render_pass_change(request, user, errors)
 
 @router.get('/verify_email')
 async def verificate_email(
     request: Request,
-    curr:GET_CURRENT_ACTIVE_USER
 ):
-    logger.debug(f"user {curr} verificated email successfully")
-    return await render_verification_success(request, curr)
+    logger.debug(f"user  verificated email successfully")
+    return await render_verification_success(request)
 
 @time_checker
 @router.get('/reset_password')
 @router.post('/reset_password')
 async def reset_password(
     request: Request,
-    curr:GET_CURRENT_ACTIVE_USER,
     auth:AuthDependency,
+    email: str = Form(None),
     new_password = Form(None),
     errors: str = None
 ):
+    user = None
+    try:
+        curr_user = await get_current_active_user()
+        user = curr_user
+    except:
+        user = await auth._repo.get_user_for_auth_by_email(auth.session, email)
+
     respone = RedirectResponse(url='/', status_code=302)
     if request.method == 'POST':
         try:
-            logger.debug(new_password)
-            await auth.password_change(curr, new_password)
-            return respone
+            if user:
+                logger.debug(new_password)
+                await auth.password_change(user, new_password)
+                logger.debug('Password was changed successfully')
+                return respone
         except Exception as err:
             logger.error(err)
             return await render_password_reset(
                 request,
-                user=curr,
-                errors=str(err),
+                user=user,
+                errors=str(err.detail),
             )
 
-    return await render_password_reset(request, curr, errors)
+    return await render_password_reset(request, user, errors)

@@ -2,7 +2,7 @@ from fastapi import Request
 import logging 
 
 from src.utils.prepared_response import prepare_template
-from src.core.config.config import templates, main_prefix
+from src.core.config.config import templates, main_prefix, url_email_verification
 from src.core.services.auth.domain.models.user import UserModel
 from src.utils.time_check import time_checker
 
@@ -18,7 +18,8 @@ async def render_login_form(
     prepared_data = {
         "title":"Sigh In",
         "form_data":form_data,
-        "errors":errors
+        "errors":errors,
+        "url_data":url_email_verification,
         }
 
     template_response_body_data = await prepare_template(

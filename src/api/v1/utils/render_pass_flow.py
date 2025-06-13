@@ -1,8 +1,9 @@
 from fastapi import Request
+from typing import Optional
 import logging 
 
 from src.utils.prepared_response import prepare_template
-from src.core.config.config import templates, main_prefix, main_url
+from src.core.config.config import templates, url_pass_changer
 from src.core.services.auth.domain.models.user import UserModel
 from src.utils.time_check import time_checker
 
@@ -41,23 +42,17 @@ async def render_pass_change(
 @time_checker
 async def render_verification_success(
     request: Request, 
-    user: UserModel,
     errors:str = None
 ):
     prepared_data = {
         "title": "Email Verification Success!",
         "description":"You managed to verificate email. You can proceed change password",
-        "url_data":{'title':'password reset', 'url':f"{main_url}{main_prefix}/reset_password"},
+        "url_data":url_pass_changer,
         "errors":errors
-    }
-    
-    add_data = {
-        "user": user,
     }
     
     template_response_body_data = await prepare_template(
         data=prepared_data,
-        additional_data=add_data
     )
 
     response = templates.TemplateResponse(
@@ -101,7 +96,6 @@ async def render_password_reset(
 @time_checker
 async def render_after_send_email(
     request: Request, 
-    user: UserModel,
     errors:str = None
 ):
     prepared_data = {
@@ -110,13 +104,9 @@ async def render_after_send_email(
         "errors":errors
     }
     
-    add_data = {
-        "user": user,
-    }
     
     template_response_body_data = await prepare_template(
-        data=prepared_data,
-        additional_data=add_data
+        data=prepared_data
     )
 
     response = templates.TemplateResponse(

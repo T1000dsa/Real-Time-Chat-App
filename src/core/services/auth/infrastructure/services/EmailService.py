@@ -57,6 +57,7 @@ class EmailService(EmailRepo):
             return False
 
         # Fire-and-forget Celery task
+        logger.debug("Before celery task")
         send_email_task.delay(recipient, subject, body, html_body)
         return True
 
@@ -69,7 +70,11 @@ class EmailService(EmailRepo):
         html_body = f"""<html><body><p>Click <a href="{verification_url}">here</a> to verify.</p></body></html>"""
         return await self.send_email(recipient, subject, body, html_body)
     
-    async def email_verification(self, session: AsyncSession, email: str, user: UserModel, user_repo: UserService):
+    async def email_verification(self, session: AsyncSession, email: str,  user_repo: UserService, user: Optional[UserModel] = None):
         email_user = await user_repo.get_user_for_auth_by_email(session, email)
-        if email_user.id != user.id:
-            raise KeyError('User email and provided email not matched! Please provide YOUR email!')
+        if user:
+            if email_user.id != user.id:
+                raise KeyError('User email and provided email not matched! Please provide YOUR email!')
+        else:
+            if email_user is None:
+                raise KeyError("Such email doesnt exist!")

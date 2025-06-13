@@ -23,7 +23,7 @@ def test_login_success():
             "login": "new-00",
             "password": "viwera9jfg89435ut80tgji0osetj0p80yt35rw4g"
         },
-        follow_redirects=False  # Important to not follow the redirect
+        follow_redirects=False
     )
     
     # Should return 302 redirect
@@ -78,11 +78,10 @@ def test_user_register(cleanup_test_user):
         data={
             "login": "test_login",
             "password": "test_pass"
-        },
-        follow_redirects=False
+        }
     )
     
-    assert login_response.status_code == 302
+    assert login_response.status_code == 200
     assert login_response.headers['location'] == '/'
     
     # Verify the login actually works

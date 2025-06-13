@@ -20,4 +20,9 @@
     <!-- Submit Button -->
     <button type="submit">Log in</button>
 </form>
+
+{%if url_data%}
+    <a href="{{url_data.url}}">{{url_data.title}}</a>
+{% endif %}
+
 {% endblock %}

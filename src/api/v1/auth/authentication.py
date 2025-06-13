@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, HTTPException
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
@@ -45,10 +45,20 @@ async def handle_login(
                 form_data=form_data
             )
         
+        logger.debug(type(tokens))
+        
         response = RedirectResponse(url='/', status_code=302)
         response = await auth_service.set_cookies(response=response, tokens=tokens)
         return response
-        
+    
+    except HTTPException as err:
+        logger.error(f"Login failed: {err}")
+        return await render_login_form(
+            request, 
+            errors=f"{err.detail}",
+            form_data=form_data
+        )
+
     except Exception as err:
         logger.error(f"Login failed: {err}")
         return await render_login_form(

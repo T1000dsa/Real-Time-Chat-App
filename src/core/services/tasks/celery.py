@@ -5,7 +5,10 @@ celery = Celery(
     'periodic_tasks',
     broker=f'redis://{settings.redis.host}:{settings.redis.port}/0',
     backend=f'redis://{settings.redis.host}:{settings.redis.port}/0',
-    include=['src.core.services.tasks.task_health']
+    include=[
+        'src.core.services.tasks.task_health',
+        'src.core.services.tasks.email_task'
+             ]
 )
 
 # Configuration

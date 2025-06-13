@@ -14,19 +14,6 @@ from src.core.config.models import (
     )
 
 
-"""base_dir = Path(__file__).parent.parent.parent
-frontend_root = base_dir / 'frontend' / 'templates'
-static_root = base_dir / 'frontend' / 'static'
-templates = Jinja2Templates(directory=frontend_root)
-
-media_root = base_dir / 'media'
-default_picture_none =  '/media/Not_exist.png'
-max_file_size = 10 * 1024**2 # 10 mb
-
-os.makedirs(frontend_root, exist_ok=True)
-os.makedirs(static_root, exist_ok=True)
-os.makedirs(media_root, exist_ok=True)"""
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_nested_delimiter='__',
@@ -99,6 +86,10 @@ max_file_size = 10 * 1024**2 # 10 mb
 
 main_prefix = settings.prefix.api_data.prefix
 main_url = f'http://{settings.run.host}:{settings.run.port}'
+
+#temporary placement
+url_pass_changer = {'title':'password reset', 'url':f'{main_url}{main_prefix}/reset_password'}
+url_email_verification = {'title':'password change', 'url':f'{main_prefix}/password_change'}
 
 
 if settings.mode.mode not in ('DEV', 'TEST'):
