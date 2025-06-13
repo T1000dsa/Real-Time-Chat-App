@@ -82,7 +82,7 @@ class JWTService(TokenService):
         self, 
         request:Request,
         session: AsyncSession,
-        db_repo:DatabaseTokenRepository
+        db_repo:'DatabaseTokenRepository'
     ) -> Optional[dict]:
         """
         1. Token Verification

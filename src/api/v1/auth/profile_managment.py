@@ -5,7 +5,13 @@ import logging
 
 from src.core.config.config import main_prefix
 from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER
-from src.api.v1.utils.render import render_profile_form, render_pass_change
+from src.api.v1.utils.render_pass_flow import (
+    render_pass_change, 
+    render_verification_success, 
+    render_password_reset, 
+    render_after_send_email
+    )
+from src.api.v1.utils.render_auth import render_profile_form
 from src.utils.file_uploader import handle_photo_upload
 from src.utils.time_check import time_checker
 
@@ -16,7 +22,9 @@ router = APIRouter(prefix=main_prefix, tags=['auth'])
 @time_checker
 @router.get('/profile')
 async def profile(request: Request, curr_user: GET_CURRENT_ACTIVE_USER):
+    logger.debug('Inside profile endpoint')
     if curr_user:
+        logger.debug(f'{curr_user=}')
         return await render_profile_form(request, curr_user)
 
 @time_checker
@@ -29,6 +37,7 @@ async def update_profile(
     login: str = Form(None),
     photo: UploadFile = File(None)
 ):
+    logger.debug('Inside profile update endpoint')
     if not curr_user:
         return RedirectResponse(f'/{main_prefix}/login', status_code=303)
     
@@ -36,11 +45,8 @@ async def update_profile(
         # Handle file upload (you'll need to implement this)
         photo_url = await handle_photo_upload(photo, curr_user)
         
-         #update_profile_file(db, curr_user, {'email':email,'photo':photo_url, 'login':login})
     await auth.update_profile_user(curr_user.id, {'email':email,'photo':photo_url, 'login':login})
     return RedirectResponse(f'{main_prefix}/profile', status_code=303)
-
-
 
 @time_checker
 @router.get('/password_change')
@@ -48,9 +54,69 @@ async def update_profile(
 async def password_change(
     request: Request,
     curr_user: GET_CURRENT_ACTIVE_USER,
+    auth:AuthDependency,
     email: str = Form(None),
+    errors: str = None
 ):
     if request.method == 'POST':
-        pass
 
-    return await render_pass_change(request, curr_user)
+        try:
+            # Trying to verificate user email, if matches -> go further if not, raise error
+            await auth._email.email_verification(auth.session, email, curr_user, auth._repo)
+
+            # Trying to send verificate-link toward urer email
+            await auth._email.send_verification_email(email)
+
+            return await render_after_send_email(request, curr_user, errors)
+
+        except KeyError as err:
+            logger.error(err)
+            return await render_pass_change(
+                request,
+                user=curr_user,
+                errors=str(err),
+            )
+
+        except Exception as err:
+            logger.error(err)
+            return await render_pass_change(
+                request,
+                user=curr_user,
+                errors=str(err),
+            )
+            
+    return await render_pass_change(request, curr_user, errors)
+
+@router.get('/verify_email')
+async def verificate_email(
+    request: Request,
+    curr:GET_CURRENT_ACTIVE_USER
+):
+    logger.debug(f"user {curr} verificated email successfully")
+    return await render_verification_success(request, curr)
+
+@time_checker
+@router.get('/reset_password')
+@router.post('/reset_password')
+async def reset_password(
+    request: Request,
+    curr:GET_CURRENT_ACTIVE_USER,
+    auth:AuthDependency,
+    new_password = Form(None),
+    errors: str = None
+):
+    respone = RedirectResponse(url='/', status_code=302)
+    if request.method == 'POST':
+        try:
+            logger.debug(new_password)
+            await auth.password_change(curr, new_password)
+            return respone
+        except Exception as err:
+            logger.error(err)
+            return await render_password_reset(
+                request,
+                user=curr,
+                errors=str(err),
+            )
+
+    return await render_password_reset(request, curr, errors)

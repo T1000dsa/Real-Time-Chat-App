@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+<title>{{ title }}</title>
+{% block content %}
+<h1>{{ title }}</h1>
+{{ description }}<br>
+{{ content }}<br>
+{% if url_data %}
+    <a href="{{ url_data.url }}">{{url_data.title}}</a><br>
+{% endif %}
+{% endblock %}

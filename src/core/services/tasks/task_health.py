@@ -1,10 +1,10 @@
 import logging
 from src.core.dependencies.db_injection import AsyncSession, db_helper
-from src.core.services.tasks.celery import app
+from src.core.services.tasks.celery import celery
 
 logger = logging.getLogger(__name__)
 
-@app.task
+@celery.task
 def healthcheck():
     try:
 

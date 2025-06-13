@@ -10,3 +10,4 @@ class TemplateData(BaseModel):
     form_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Form's data")
     template_action:Optional[str] = Field(default=None, description="Teplate's action (endpoint's url)")
     errors:Optional[str] = Field(default=None, description="Error's data")
+    url_data: Optional[Dict] = Field(default=None, description="Url data")

@@ -1,4 +1,5 @@
 from fastapi import Response, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -29,4 +30,4 @@ class AuthRepository(ABC):  # Handles ONLY authentication
     async def update_profile_user(self, user_id:int,data:dict) -> None: ...
 
     @abstractmethod
-    async def password_change(email:str): ...
+    async def password_change(self, user:UserModel, new_pass:str): ...

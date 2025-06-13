@@ -8,6 +8,7 @@ from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.AuthProvider import AuthProvider
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
+from src.core.services.auth.infrastructure.services.EmailService import EmailService
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.exceptions.auth_exception import auth_demand_exception, inactive_user_exception
 
@@ -25,6 +26,10 @@ def get_token_repo() -> DatabaseTokenRepository:
 # Hash operations
 def get_hash_service() -> Bcryptprovider:
     return Bcryptprovider()
+
+# Email operations
+def get_email_service() -> EmailService:
+    return EmailService()
 
 def get_token_from_cookie(
         request: Request, 
@@ -46,14 +51,16 @@ def get_auth_provider(
         user_repo = Depends(get_user_repo), 
         hash_service = Depends(get_hash_service),
         token_service = Depends(get_token_service),
-        db_repo = Depends(get_token_repo)
+        db_repo = Depends(get_token_repo),
+        emaiL_service = Depends(get_email_service)
         ) -> AuthProvider:
     return AuthProvider(
         session=session,
         user_repo=user_repo, 
         hash_service=hash_service, 
         token_service=token_service,
-        db_repo=db_repo
+        db_repo=db_repo,
+        email_service=emaiL_service
         )
 
 # Current user dependency
@@ -94,13 +101,15 @@ def create_auth_provider(db_session):
     hash_service = Bcryptprovider()
     token_repo = DatabaseTokenRepository()
     user_service = UserService(hash_service=hash_service)
+    email_service = EmailService()
 
     return AuthProvider(
         session=db_session,
         user_repo=user_service,
         hash_service=hash_service,
         token_service=token_service,
-        db_repo=token_repo
+        db_repo=token_repo,
+        email_service=email_service
     )
 
 AuthDependency = Annotated[AuthProvider, Depends(get_auth_provider)]

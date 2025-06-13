@@ -6,7 +6,7 @@ from logging.config import dictConfig
 import uvicorn
 import logging
 
-from src.core.config.config import settings, media_root, static_root
+from src.core.config.config import settings, media_root, static_root, main_url
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     settings.create_directories()
     dictConfig(LOG_CONFIG)
     logger = logging.getLogger(__name__)
-    logger.info(f'http://{settings.run.host}:{settings.run.port}')
+    logger.info(main_url)
     #logger.info(settings)
     
     yield  # FastAPI handles requests here

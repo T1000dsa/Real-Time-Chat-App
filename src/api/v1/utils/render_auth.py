@@ -2,7 +2,7 @@ from fastapi import Request
 import logging 
 
 from src.utils.prepared_response import prepare_template
-from src.core.config.config import templates
+from src.core.config.config import templates, main_prefix
 from src.core.services.auth.domain.models.user import UserModel
 from src.utils.time_check import time_checker
 
@@ -65,6 +65,7 @@ async def render_profile_form(request: Request, user: UserModel):
     
     add_data = {
         "user": user,
+        "password_change_url":f'{main_prefix}/password_change'
     }
     
     template_response_body_data = await prepare_template(
@@ -75,29 +76,6 @@ async def render_profile_form(request: Request, user: UserModel):
     response = templates.TemplateResponse(
         request=request,
         name='users/profile.html',
-        context=template_response_body_data
-        )
-    return response
-
-@time_checker
-async def render_pass_change(request: Request, user: UserModel):
-    prepared_data = {
-        "title": "Password Change",
-        "description":"Are you sure you want to change password? If so, you have to provide your email."
-    }
-    
-    add_data = {
-        "user": user,
-    }
-    
-    template_response_body_data = await prepare_template(
-        data=prepared_data,
-        additional_data=add_data
-    )
-
-    response = templates.TemplateResponse(
-        request=request,
-        name='users/password_change.html',
         context=template_response_body_data
         )
     return response

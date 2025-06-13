@@ -98,6 +98,7 @@ default_picture_none = settings.default_picture_none
 max_file_size = 10 * 1024**2 # 10 mb
 
 main_prefix = settings.prefix.api_data.prefix
+main_url = f'http://{settings.run.host}:{settings.run.port}'
 
 
 if settings.mode.mode not in ('DEV', 'TEST'):

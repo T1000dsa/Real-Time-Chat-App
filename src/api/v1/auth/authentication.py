@@ -8,7 +8,7 @@ import logging
 from src.core.schemas.user import UserSchema
 from src.core.config.config import main_prefix
 from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER
-from src.api.v1.utils.render import render_login_form, render_register_form, render_profile_form
+from src.api.v1.utils.render_auth import render_login_form, render_register_form
 from src.utils.time_check import time_checker
 
 

@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>{{ user.login or 'Anon' }}'s {{ title }}</h1>
-{{user.photo_url}}
 {% if user %}
     <form method="post" enctype="multipart/form-data">
         <br><img src="{{ user.photo_url }}" width="200" height="200"><br>
@@ -30,6 +29,6 @@
         <p>Last Login: {{ user.last_time_login }}</p>
     {% endif %}
     <hr>
-    <a href="{{ }}">Change password</a>
+    <a href="{{password_change_url}}">Change password</a>
 {% endif %}
 {% endblock %}

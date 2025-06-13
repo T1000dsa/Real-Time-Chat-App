@@ -1,7 +1,7 @@
 from celery import Celery
 from src.core.config.config import settings
 
-app = Celery(
+celery = Celery(
     'periodic_tasks',
     broker=f'redis://{settings.redis.host}:{settings.redis.port}/0',
     backend=f'redis://{settings.redis.host}:{settings.redis.port}/0',
@@ -9,7 +9,7 @@ app = Celery(
 )
 
 # Configuration
-app.conf.update(
+celery.conf.update(
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
@@ -18,7 +18,7 @@ app.conf.update(
 )
 
 # Periodic Tasks
-app.conf.beat_schedule = {
+celery.conf.beat_schedule = {
     'healthcheck-every-10-seconds': {
         'task': 'src.core.services.tasks.task_health.healthcheck',
         'schedule': 10.0,

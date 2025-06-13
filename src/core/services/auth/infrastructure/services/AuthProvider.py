@@ -13,6 +13,7 @@ from src.core.services.auth.domain.interfaces import AuthRepository
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
+from src.core.services.auth.infrastructure.services.EmailService import EmailService
 from src.core.services.auth.infrastructure.repositories.DatabaseTokenRepository import DatabaseTokenRepository
 from src.core.exceptions.auth_exception import credentials_exception, inactive_user_exception
 from src.utils.time_check import time_checker
@@ -28,7 +29,8 @@ class AuthProvider(AuthRepository):
             user_repo: UserService, 
             hash_service: Bcryptprovider, 
             token_service:JWTService, 
-            db_repo:DatabaseTokenRepository
+            db_repo:DatabaseTokenRepository,
+            email_service:EmailService,
             ):
         
         self.session = session
@@ -36,6 +38,7 @@ class AuthProvider(AuthRepository):
         self._hash = hash_service
         self._token = token_service
         self._db = db_repo
+        self._email = email_service
 
     @time_checker
     async def authenticate_user(self, login, password) -> dict:
@@ -167,5 +170,5 @@ class AuthProvider(AuthRepository):
         await self._repo.update_profile(self.session, user_id, data)
     
     @time_checker
-    async def password_change(self, email:str, new_password:str):
-        await self._repo.change_password_email(self.session, email, new_password)
+    async def password_change(self, user:UserModel, new_pass:str):
+        await self._repo.change_password_email(self.session, user, new_pass)
