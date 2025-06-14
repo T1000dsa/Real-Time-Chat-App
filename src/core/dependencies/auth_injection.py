@@ -112,6 +112,31 @@ def create_auth_provider(db_session):
         email_service=email_service
     )
 
+
+# Current user dependency
+async def get_current_user_for_email(
+    request:Request,
+    token: str = Depends(get_token_from_cookie),
+    auth_service: AuthProvider = Depends(get_auth_provider)
+) -> UserModel:
+    if token is None:
+        logger.info('Someone tried to reach endpoint')
+        return None
+    
+    try:
+        user = await auth_service.gather_user_data(request=request)
+
+        if user is None:
+            logger.info('Someone tried to reach endpoint')
+            return None
+            
+    except Exception as err:
+        logger.error(f'{err}')
+        return None
+    return user
+
+
 AuthDependency = Annotated[AuthProvider, Depends(get_auth_provider)]
 GET_CURRENT_USER = Annotated[UserModel, Depends(get_current_user)]
+GET_CURRENT_USER_FOR_EMAIL = Annotated[Optional[UserModel], Depends(get_current_user_for_email)]
 GET_CURRENT_ACTIVE_USER = Annotated[UserModel, Depends(get_current_active_user)]

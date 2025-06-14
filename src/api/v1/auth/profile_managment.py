@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Form, UploadFile, File
+from fastapi import APIRouter, Form, UploadFile, File, Depends
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 import logging
 
 from src.core.config.config import main_prefix
-from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER, get_current_active_user
+from src.core.dependencies.auth_injection import (
+    AuthDependency,
+    GET_CURRENT_ACTIVE_USER,
+    get_current_active_user, 
+    GET_CURRENT_USER_FOR_EMAIL
+    )
 from src.api.v1.utils.render_pass_flow import (
     render_pass_change, 
     render_verification_success, 
@@ -54,24 +59,24 @@ async def update_profile(
 async def password_change(
     request: Request,
     auth:AuthDependency,
+    curr_user:GET_CURRENT_USER_FOR_EMAIL,
     email: str = Form(None),
     errors: str = None
 ):
     user = None
-
-    try:
-        user = await get_current_active_user()
-
-    except:
+    
+    if curr_user is None:
         user = await auth._repo.get_user_for_auth_by_email(auth.session, email)
+
+    logger.debug(f'{user=} {curr_user=} {email=}')
 
     if request.method == 'POST':
 
         try:
             # if user authorised
-            if user:
+            if curr_user:
                 # Trying to verificate user email, if matches -> go further if not, raise error
-                await auth._email.email_verification(auth.session, email, auth._repo, user)
+                await auth._email.email_verification(auth.session, email, auth._repo, curr_user)
 
                 # Trying to send verificate-link toward urer email
                 await auth._email.send_verification_email(email)
@@ -90,7 +95,7 @@ async def password_change(
             return await render_pass_change(
                 request,
                 user=user,
-                errors=str(err.detail),
+                errors=str(err),
             )
 
         except Exception as err:
@@ -98,7 +103,7 @@ async def password_change(
             return await render_pass_change(
                 request,
                 user=user,
-                errors=str(err.detail),
+                errors=str(err),
             )
             
     return await render_pass_change(request, user, errors)
@@ -116,31 +121,45 @@ async def verificate_email(
 async def reset_password(
     request: Request,
     auth:AuthDependency,
+    curr_user:GET_CURRENT_USER_FOR_EMAIL,
     email: str = Form(None),
     new_password = Form(None),
     errors: str = None
 ):
     user = None
-    try:
-        curr_user = await get_current_active_user()
-        user = curr_user
-    except:
+    if curr_user is None:
         user = await auth._repo.get_user_for_auth_by_email(auth.session, email)
+
+    logger.debug(f'{curr_user=} {user=} {email=}')
 
     respone = RedirectResponse(url='/', status_code=302)
     if request.method == 'POST':
         try:
-            if user:
+            if curr_user:
                 logger.debug(new_password)
-                await auth.password_change(user, new_password)
+                await auth.password_change(curr_user, new_password, email)
                 logger.debug('Password was changed successfully')
                 return respone
+            
+            if user:
+                logger.debug(new_password)
+                await auth.password_change(user, new_password, email)
+                logger.debug('Password was changed successfully')
+                return respone
+            
+        except KeyError as err:
+            logger.error(err)
+            return await render_password_reset(
+                request,
+                user=user,
+                errors=str(err),
+            )
         except Exception as err:
             logger.error(err)
             return await render_password_reset(
                 request,
                 user=user,
-                errors=str(err.detail),
+                errors=str(err),
             )
 
     return await render_password_reset(request, user, errors)

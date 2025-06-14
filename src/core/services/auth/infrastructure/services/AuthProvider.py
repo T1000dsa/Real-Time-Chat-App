@@ -170,5 +170,5 @@ class AuthProvider(AuthRepository):
         await self._repo.update_profile(self.session, user_id, data)
     
     @time_checker
-    async def password_change(self, user:UserModel, new_pass:str):
-        await self._repo.change_password_email(self.session, user, new_pass)
+    async def password_change(self, user:UserModel, new_pass:str, email:str):
+        await self._repo.change_password_email(self.session, user, new_pass, email)

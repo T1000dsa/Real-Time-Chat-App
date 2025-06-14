@@ -166,7 +166,13 @@ async def update_profile_file(session:AsyncSession, user:UserModel, data_dict:di
         raise e
     
 @time_checker   
-async def update_password_by_email(session:AsyncSession, user:UserModel, new_pass:str, hash_service:Bcryptprovider):
+async def update_password_by_email(session:AsyncSession, user:UserModel, new_pass:str, hash_service:Bcryptprovider, email:str):
+    user_by_email = await select_user_email(session, email)
+    if user_by_email and user:
+        if user_by_email.id != user.id:
+            raise KeyError('User email and provided email not matched! Please provide YOUR email!')
+    else:
+        raise KeyError("Such email doesnt exist!")
     try:
         if 129 > len(new_pass) > 0:
             user.password = await hash_service.hash_password(new_pass)

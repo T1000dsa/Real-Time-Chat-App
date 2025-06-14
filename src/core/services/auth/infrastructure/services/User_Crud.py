@@ -61,5 +61,5 @@ class UserService(UserRepository):
         await update_profile_file(session, user, data)
 
     @time_checker
-    async def change_password_email(self, session:AsyncSession, user:UserModel, new_pass:str) -> None:
-        await update_password_by_email(session, user, new_pass, self._hash)
+    async def change_password_email(self, session:AsyncSession, user:UserModel, new_pass:str, email:str) -> None:
+        await update_password_by_email(session, user, new_pass, self._hash, email)

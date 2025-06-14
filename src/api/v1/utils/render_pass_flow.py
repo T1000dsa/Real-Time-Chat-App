@@ -76,13 +76,9 @@ async def render_password_reset(
         
     }
     
-    add_data = {
-        "user": user,
-    }
     
     template_response_body_data = await prepare_template(
         data=prepared_data,
-        additional_data=add_data
     )
 
     response = templates.TemplateResponse(

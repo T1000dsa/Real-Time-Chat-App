@@ -1,138 +1,78 @@
-{% extends 'base.html' %}
-<title>{{ title }}</title>
-{% block content %}
+html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Chat Test</title>
+    <style>
+        /* Your existing styles */
+    </style>
+</head>
+<body>
+    <h1>WebSocket Chat Test</h1>
+    <div id="status">Disconnected</div>
+    <div id="chat"></div>
+    <div>
+        <input type="text" id="message" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
 
-<h1>Welcome to the Chat, (ID: {{ client_id }})</h1>
-
-{{ active_connections }}
-{{ user_info }}
-
-<div id="connection-status" class="system-message">Connecting...</div>
-    
-<div id="chat" class="chat-container"></div>
-
-<div class="message-input">
-    <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
-    <button onclick="sendMessage()">Send</button>
-</div>
-
-{{websocket_url}}
-<script>console.log("WebSocket URL:", "{{ websocket_url }}");</script>
-
-<script>
-
-
-
-    const client_id = "{{ client_id }}";
-    const ws_url = "{{ websocket_url }}"  === 'https:';
-        "wss://" + window.location.host + "/ws/" + client_id
-        "ws://" + window.location.host + "/ws/" + client_id;
-    const statusElement = document.getElementById('connection-status');
-    const chatElement = document.getElementById('chat');
-
-    
-    console.log(`Attempting to connect to WebSocket at ${ws_url}`);
-    const ws = new WebSocket(ws_url);
-
-    // Connection opened
-    ws.onopen = function(event) {
-        console.log('WebSocket connection established', event);
-        statusElement.textContent = "Connected to chat";
-        statusElement.className = 'system-message connected';
+    <script>
+        // Get the correct server URL
+        const serverUrl = "http://localhost:8000";  // Must match your FastAPI server
+        const roomId = "test-room";
         
-        // Send a test message to verify connection
-        ws.send(JSON.stringify({
-            type: "system",
-            message: "Connection established"
-        }));
-    };
+        // Construct WebSocket URL
+        const wsUrl = serverUrl.replace('http', 'ws') + `/ws/trash/${roomId}`;
+        console.log("Connecting to:", wsUrl);
+        console.log("Server url:", serverUrl);
+        
+        const chatDiv = document.getElementById('chat');
+        const statusDiv = document.getElementById('status');
+        const messageInput = document.getElementById('message');
+        
+        const ws = new WebSocket(wsUrl);
 
-    // Listen for messages
-    ws.onmessage = function(event) {
-    try {
-        const data = JSON.parse(event.data);
-        const message = document.createElement('div');
-        message.textContent = `${data.sender_name}: ${data.content}`;
-        message.className = 'user-message';
-        chatElement.appendChild(message);
-    } catch (e) {
-        console.error('Error parsing message:', e);
-    }
-    chatElement.scrollTop = chatElement.scrollHeight;
-    };
+        ws.onopen = (event) => {
+            statusDiv.textContent = `Connected to ${roomId}`;
+            statusDiv.style.color = "green";
+            addMessage("System", "Connected!");
+        };
 
-    // Connection closed
-    ws.onclose = function(event) {
-        console.log('WebSocket connection closed', event);
-        statusElement.textContent = `Disconnected from chat (Code: ${event.code}, Reason: ${event.reason || 'none'})`;
-        statusElement.className = 'system-message disconnected';
-    };
+        ws.onmessage = (event) => {
+            addMessage("Server", event.data);
+        };
 
-    // Connection error
-    ws.onerror = function(error) {
-        console.error('WebSocket error:', error);
-        statusElement.textContent = "Connection error - see console for details";
-        statusElement.className = 'system-message error';
-    };
+        ws.onclose = (event) => {
+            statusDiv.textContent = "Disconnected";
+            statusDiv.style.color = "red";
+            addMessage("System", "Disconnected!");
+        };
 
-    function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const message = input.value.trim();
-    
-    if (message !== '' && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: "message",
-            content: message,
-            sender_id: client_id
-        }));
-        input.value = '';
-        }   
-    }
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            statusDiv.textContent = "Connection error!";
+            statusDiv.style.color = "darkred";
+        };
 
-
-    // Allow sending with Enter key
-    document.getElementById('messageInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
+        function addMessage(sender, message) {
+            const msgElement = document.createElement('div');
+            msgElement.innerHTML = `<strong>[${new Date().toLocaleString()}] ${sender}:</strong> ${message}`;
+            chatDiv.appendChild(msgElement);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
         }
-    });
-</script>
 
-<style>
-    .chat-container {
-        height: 400px;
-        border: 1px solid #ddd;
-        padding: 10px;
-        overflow-y: scroll;
-        margin-bottom: 10px;
-    }
-    .system-message {
-        color: #666;
-        font-style: italic;
-        margin: 5px 0;
-    }
-    .system-message.connected {
-        color: green;
-    }
-    .system-message.disconnected {
-        color: red;
-    }
-    .system-message.error {
-        color: darkred;
-        font-weight: bold;
-    }
-    .user-message {
-        margin: 5px 0;
-        padding: 5px;
-        border-left: 3px solid #4CAF50;
-    }
-    .message-input {
-        display: flex;
-        gap: 10px;
-    }
-    #messageInput {
-        flex-grow: 1;
-        padding: 8px;
-    }
-</style>
-{% endblock %}
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && ws.readyState === WebSocket.OPEN) {
+                ws.send(message);
+                addMessage("You", message);
+                messageInput.value = '';
+            }
+        }
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>

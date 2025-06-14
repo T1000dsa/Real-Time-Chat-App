@@ -72,7 +72,8 @@ class EmailService(EmailRepo):
     
     async def email_verification(self, session: AsyncSession, email: str,  user_repo: UserService, user: Optional[UserModel] = None):
         email_user = await user_repo.get_user_for_auth_by_email(session, email)
-        if user:
+        logger.debug(f'{email_user} {user}')
+        if user and email_user:
             if email_user.id != user.id:
                 raise KeyError('User email and provided email not matched! Please provide YOUR email!')
         else:
