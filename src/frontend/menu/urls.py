@@ -1,16 +1,15 @@
-from src.core.config.config import settings
+from src.core.config.config import main_prefix
 
 
-prefix = settings.prefix.api_data.prefix
+prefix = main_prefix
 menu_items = [
     {'title':'Home', 'url':'/'},
     {'title':'Docs', 'url':'/docs'},
     {'title':'Registration',  'url': f'{prefix}/register'},
     {'title':'Login','url':f'{prefix}/login'},
     {'title':'Logout','url':f'{prefix}/logout'},
-    {'title':'Chat Room', 'url':f'{prefix}/chat_room'},
+    {'title':'Chat Rooms', 'url':f'/rooms'},
     {'title':'Profile','url':f'{prefix}/profile'},
-    {'title':'Playground','url':f'{prefix}/playground'},
 ]
 
 def get_menu():

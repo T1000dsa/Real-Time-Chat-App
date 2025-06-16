@@ -35,3 +35,6 @@ class TokenService(ABC):
 
     @abstractmethod
     async def clear_tokens(self, response: Response) -> Response: ...
+    
+    @abstractmethod
+    async def verify_websocket_token(self, token: str, token_type: str) -> dict: ...

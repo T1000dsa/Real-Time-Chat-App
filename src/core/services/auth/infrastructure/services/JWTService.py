@@ -220,3 +220,18 @@ class JWTService(TokenService):
         response.delete_cookie(self.REFRESH_TYPE)
         response.delete_cookie(self.CSRF_TYPE)
         return response
+    
+    @time_checker
+    async def verify_websocket_token(self, token: str, token_type: str) -> dict:
+        if not token:
+            raise HTTPException(status_code=401, detail="Token missing")
+        
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            if payload.get("type") != token_type:
+                raise HTTPException(status_code=401, detail=f"Invalid token type")
+            return payload
+        except ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token expired")
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")

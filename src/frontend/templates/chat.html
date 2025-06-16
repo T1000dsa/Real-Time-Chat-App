@@ -1,78 +1,162 @@
-html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>WebSocket Chat Test</title>
-    <style>
-        /* Your existing styles */
-    </style>
-</head>
-<body>
-    <h1>WebSocket Chat Test</h1>
-    <div id="status">Disconnected</div>
-    <div id="chat"></div>
-    <div>
-        <input type="text" id="message" placeholder="Type your message...">
-        <button onclick="sendMessage()">Send</button>
-    </div>
+{% extends 'base.html' %}
 
-    <script>
-        // Get the correct server URL
-        const serverUrl = "http://localhost:8000";  // Must match your FastAPI server
-        const roomId = "test-room";
+<title>{{ title }}</title>
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Logged in as: {{ user.login }}</p>
+<div id="status">Disconnected</div>
+<div id="chat"></div>
+<div>
+    <input type="text" id="message" placeholder="Type your message..." autocomplete="off">
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    // Get the correct server URL
+    const serverUrl = "http://localhost:8000";
+    
+    // Extract room info from URL more reliably
+    const pathParts = window.location.pathname.split('/').filter(part => part !== '');
+    const roomType = pathParts[1]; // "general", "private", etc.
+    const roomId = pathParts[2];   // room ID
+    
+    const userId = "{{ user.id }}";
+    const userLogin = "{{ user.login }}";
+    
+    // Connect to specific room
+    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomId}?user_id=${userId}&user_login=${encodeURIComponent(userLogin)}`;
+    
+    console.log("Connecting to WebSocket at:", wsUrl);
+
+    const displayedMessageIds = new Set();
+
+    const ws = new WebSocket(wsUrl);
+    const chatDiv = document.getElementById('chat');
+    const statusDiv = document.getElementById('status');
+    const messageInput = document.getElementById('message');
+
+    // Handle WebSocket connection opening
+    ws.onopen = (event) => {
+        statusDiv.textContent = `Connected to ${roomType} room: ${roomId}`;
+        statusDiv.style.color = "green";
+        addSystemMessage("Connected to chat room!");
+    };
+
+    // Handle incoming messages
+    ws.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
         
-        // Construct WebSocket URL
-        const wsUrl = serverUrl.replace('http', 'ws') + `/ws/trash/${roomId}`;
-        console.log("Connecting to:", wsUrl);
-        console.log("Server url:", serverUrl);
-        
-        const chatDiv = document.getElementById('chat');
-        const statusDiv = document.getElementById('status');
-        const messageInput = document.getElementById('message');
-        
-        const ws = new WebSocket(wsUrl);
-
-        ws.onopen = (event) => {
-            statusDiv.textContent = `Connected to ${roomId}`;
-            statusDiv.style.color = "green";
-            addMessage("System", "Connected!");
-        };
-
-        ws.onmessage = (event) => {
-            addMessage("Server", event.data);
-        };
-
-        ws.onclose = (event) => {
-            statusDiv.textContent = "Disconnected";
-            statusDiv.style.color = "red";
-            addMessage("System", "Disconnected!");
-        };
-
-        ws.onerror = (error) => {
-            console.error("WebSocket error:", error);
-            statusDiv.textContent = "Connection error!";
-            statusDiv.style.color = "darkred";
-        };
-
-        function addMessage(sender, message) {
-            const msgElement = document.createElement('div');
-            msgElement.innerHTML = `<strong>[${new Date().toLocaleString()}] ${sender}:</strong> ${message}`;
-            chatDiv.appendChild(msgElement);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
+        // Skip messages we've already displayed
+        if (displayedMessageIds.has(data.id)) {
+            return;
         }
-
-        function sendMessage() {
-            const message = messageInput.value.trim();
-            if (message && ws.readyState === WebSocket.OPEN) {
-                ws.send(message);
-                addMessage("You", message);
-                messageInput.value = '';
+        
+        // Handle the message
+        if (data.sender === "System") {
+            addSystemMessage(data.content);
+        } else {
+            addMessage(data.sender, data.content);
+        }
+    } catch (error) {
+        // Fallback to plain text handling
+        const message = event.data;
+        const separatorIndex = message.indexOf(':');
+        
+        if (separatorIndex > -1) {
+            const sender = message.substring(0, separatorIndex).trim();
+            const content = message.substring(separatorIndex + 1).trim();
+            
+            if (sender !== userLogin) {
+                addMessage(sender, content);
             }
+        } else {
+            addSystemMessage(message);
         }
+    }
+};
 
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    </script>
-</body>
-</html>
+
+    // Handle connection closing
+    ws.onclose = (event) => {
+        statusDiv.textContent = "Disconnected";
+        statusDiv.style.color = "red";
+        addSystemMessage("Disconnected from chat");
+        
+        // Optionally attempt to reconnect
+        setTimeout(() => {
+            addSystemMessage("Attempting to reconnect...");
+            window.location.reload();
+        }, 5000);
+    };
+
+    // Handle errors
+    ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        statusDiv.textContent = "Connection error!";
+        statusDiv.style.color = "darkred";
+        addSystemMessage("Connection error occurred");
+    };
+
+    // Helper function to add system messages
+    function addSystemMessage(message) {
+        addMessage("System", message);
+    }
+
+    // Helper function to add messages to the chat
+    function addMessage(sender, message) {
+        const msgElement = document.createElement('div');
+        
+        // Different styling for system vs user messages
+        if (sender === "System") {
+            msgElement.className = "system-message";
+            msgElement.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+        } else {
+            msgElement.innerHTML = `
+                <strong>${sender}:</strong> 
+                <span class="message-content">${message}</span>
+                <small class="message-time">${new Date().toLocaleTimeString()}</small>
+            `;
+        }
+        
+        chatDiv.appendChild(msgElement);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
+    // Function to send messages
+    function sendMessage() {
+    const message = messageInput.value.trim();
+    if (message && ws.readyState === WebSocket.OPEN) {
+        try {
+            const messageId = Date.now().toString();
+            displayedMessageIds.add(messageId);
+            
+            // Add to your chat immediately with the ID
+            addMessage(userLogin, message, messageId);
+            
+            // Send both message and ID to server
+            ws.send(JSON.stringify({
+                id: messageId,
+                content: message
+            }));
+            
+            messageInput.value = '';
+        } catch (error) {
+            console.error("Error sending message:", error);
+            addSystemMessage("Failed to send message");
+        }
+    }
+}
+
+
+    // Send message on Enter key
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Focus the input field when page loads
+    window.addEventListener('load', () => {
+        messageInput.focus();
+    });
+</script>
+{% endblock %}
