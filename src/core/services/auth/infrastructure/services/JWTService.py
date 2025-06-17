@@ -114,10 +114,9 @@ class JWTService(TokenService):
                 new_refresh = result.get(self.REFRESH_TYPE)
                 old_token = await db_repo.verificate_refresh_token(session, old_refresh)
 
-                logger.debug(f"{new_refresh=}")
-                logger.debug(f"{old_refresh=}")
-
-                logger.debug(f"{old_token=}")
+                #logger.debug(f"{new_refresh=}")
+                #logger.debug(f"{old_refresh=}")
+                #logger.debug(f"{old_token=}")
 
                 # building new token scheme
                 date = self.REFRESH_TOKEN_EXPIRE + datetime.now(timezone.utc)

@@ -22,9 +22,14 @@
     
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
+
+    const params = new URLSearchParams();
+    params.append('user_id', userId);
+    params.append('user_login', userLogin);
+
     
     // Connect to specific room
-    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomId}?user_id=${userId}&user_login=${encodeURIComponent(userLogin)}`;
+    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomId}?${params.toString()}`;
     
     console.log("Connecting to WebSocket at:", wsUrl);
 
@@ -34,6 +39,7 @@
     const chatDiv = document.getElementById('chat');
     const statusDiv = document.getElementById('status');
     const messageInput = document.getElementById('message');
+
 
     // Handle WebSocket connection opening
     ws.onopen = (event) => {
@@ -47,34 +53,30 @@
     try {
         const data = JSON.parse(event.data);
         
-        // Skip messages we've already displayed
-        if (displayedMessageIds.has(data.id)) {
-            return;
-        }
+        // Skip duplicates
+        if (displayedMessageIds.has(data.id)) return;
+        displayedMessageIds.add(data.id);
         
-        // Handle the message
-        if (data.sender === "System") {
-            addSystemMessage(data.content);
-        } else {
-            addMessage(data.sender, data.content);
+        // Handle different message types
+        switch(data.type) {
+            case 'system':
+                addSystemMessage(data.content);
+                break;
+            case 'error':
+                addErrorMessage(data.content);
+                break;
+            case 'message':
+                addMessage(data.sender, data.content, data.timestamp);
+                break;
+            default:
+                console.warn('Unknown message type:', data.type);
         }
-    } catch (error) {
-        // Fallback to plain text handling
-        const message = event.data;
-        const separatorIndex = message.indexOf(':');
-        
-        if (separatorIndex > -1) {
-            const sender = message.substring(0, separatorIndex).trim();
-            const content = message.substring(separatorIndex + 1).trim();
-            
-            if (sender !== userLogin) {
-                addMessage(sender, content);
-            }
-        } else {
-            addSystemMessage(message);
-        }
+    } catch (e) {
+        console.error('Error parsing message:', e);
+        addSystemMessage('Received invalid message');
     }
 };
+
 
 
     // Handle connection closing
@@ -87,16 +89,23 @@
         setTimeout(() => {
             addSystemMessage("Attempting to reconnect...");
             window.location.reload();
-        }, 5000);
+        }, 10000);
     };
 
     // Handle errors
     ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        statusDiv.textContent = "Connection error!";
-        statusDiv.style.color = "darkred";
-        addSystemMessage("Connection error occurred");
-    };
+    console.error("WebSocket error:", error);
+    statusDiv.textContent = "Connection error!";
+    statusDiv.style.color = "darkred";
+    addSystemMessage("Connection error occurred");
+    
+    // Provide more specific error messages
+    if (error.message.includes('4003')) {
+        addSystemMessage("Invalid password for private room");
+    } else if (error.message.includes('4004')) {
+        addSystemMessage("Room does not exist");
+    }
+};
 
     // Helper function to add system messages
     function addSystemMessage(message) {
@@ -113,9 +122,9 @@
             msgElement.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
         } else {
             msgElement.innerHTML = `
-                <strong>${sender}:</strong> 
+                [${new Date().toLocaleTimeString()}]
+                ${sender}:
                 <span class="message-content">${message}</span>
-                <small class="message-time">${new Date().toLocaleTimeString()}</small>
             `;
         }
         

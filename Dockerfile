@@ -23,8 +23,3 @@ EXPOSE 8000
 
 RUN echo "Environment variables in container:" && \
     printenv
-
-COPY db_init.py .
-
-# Entrypoint that runs migrations then starts the app
-CMD ["sh", "-c", "python db_init.py && uvicorn src.main:app --host 0.0.0.0 --port 8000"]

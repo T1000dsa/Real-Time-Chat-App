@@ -1,8 +1,9 @@
 from fastapi import WebSocket, WebSocketDisconnect, APIRouter,Request, Query, Form
 from fastapi.responses import RedirectResponse
+from typing import Optional
+from datetime import datetime 
 import logging
 import uuid
-from typing import Optional
 import json
 
 from src.core.services.chat.chat_manager import manager
@@ -18,13 +19,19 @@ logger = logging.getLogger(__name__)
 async def rooms_connection(
     request: Request,
 ):
+    rooms = await manager.get_private_rooms()
     prepared_data = {
         "title": f"Rooms page"
+    }
+
+    add_date = {
+        'other_rooms':rooms
     }
 
     
     template_response_body_data = await prepare_template(
         data=prepared_data,
+        additional_data=add_date
     )
     
     return templates.TemplateResponse(
@@ -33,53 +40,140 @@ async def rooms_connection(
         context=template_response_body_data
     )
 
+@router.get('/chat/{room_type}/{room_id}')
+async def general_chats_room(
+    request: Request, 
+    user: GET_CURRENT_ACTIVE_USER, 
+    room_type:str, 
+    room_id: str
+):
+    logger.debug(f"{room_type=} {room_id=}")
+    #logger.debug(manager.rooms)
+    # Validate room exists
+    if room_type not in manager.rooms or room_id not in manager.rooms[room_type]:
+        if room_type == 'private':
+            return RedirectResponse(url="/rooms", status_code=303)
+        # For general rooms, create automatically
+        manager.rooms[room_type][room_id] = {
+            'name': f"{room_type} {room_id}",
+            'password': None,
+            'clients': set()
+        }
+
+    prepared_data = {
+        "title": f"{room_type.title()} chat"
+    }
+
+    add_data = {
+        "user":user
+    }
+    template_response_body_data = await prepare_template(
+        data=prepared_data,
+        additional_data=add_data
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name='chat.html',
+        context=template_response_body_data
+    )
+
 @router.websocket("/ws/chat/{room_type}/{room_id}")
 async def chat_endpoint(
     websocket: WebSocket,
     room_type: str,
-    room_id: str = "main",  # Default value
+    room_id: str,
     user_id: str = Query(...),
-    user_login: str = Query(...)
+    user_login: str = Query(...),
+    password: Optional[str] = Query(None)
 ):
-    logger.debug('websocket')
 
+    logger.debug(f"Current rooms structure: {manager.rooms}")
+    
+    # Initialize room if it doesn't exist
+    if room_type not in manager.rooms or room_id not in manager.rooms[room_type]:
+        if room_type == 'private':
+            await websocket.close(code=4004, reason="Room does not exist")
+            return
+        # For general rooms, create automatically
+        manager.rooms[room_type][room_id] = {
+            'name': f"{room_type} {room_id}",
+            'password': None,
+            'clients': set()
+        }
     await manager.connect(websocket, user_id)
-    await manager.join_room(user_id, room_type, room_id)
+    logger.info(f'User {user_login} connected to: {room_type}/{room_id}')
     
     try:
-        while True:
-            data = await websocket.receive_text()
-            try:
-                message_data = json.loads(data)
-                # Broadcast with sender info and message ID
-                await manager.broadcast_to_room(
-                    json.dumps({
-                        "id": message_data.get("id", str(uuid.uuid4())),
-                        "sender": user_login,
-                        "content": message_data["content"]
-                    }),
-                    room_type,
-                    room_id,
-                    user_id
-                )
-            except json.JSONDecodeError:
-                # Fallback for plain text
-                await manager.broadcast_to_room(
-                    f"{user_login}: {data}",
-                    room_type,
-                    room_id,
-                    user_id
-                )
-    
-    except WebSocketDisconnect:
-        await manager.leave_room(user_id, room_type, room_id)
+        # Validate room access with password if needed
+        if not await manager.join_room(
+            user_id=user_id,
+            room_type=room_type,
+            room_id=room_id,
+            password=password
+        ):
+            await websocket.close(code=4003, reason="Invalid password or room")
+            return
+        
+        # Send join notification
         await manager.broadcast_to_room(
-            f"System: {user_login} left the chat",
+            json.dumps({
+                "type": "system",
+                "content": f"{user_login} joined the chat"
+            }),
             room_type,
             room_id,
             user_id
         )
-
+        
+        # Main message loop
+        while True:
+            data = await websocket.receive_text()
+            
+            # Parse message with error handling
+            try:
+                msg = json.loads(data)
+                if not isinstance(msg, dict):
+                    raise ValueError("Invalid message format")
+                    
+                # Construct standardized message
+                message = {
+                    "id": str(uuid.uuid4()),
+                    "type": "message",
+                    "sender_id": user_id,
+                    "sender": user_login,
+                    "content": msg.get("content", ""),
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                await manager.broadcast_to_room(
+                    json.dumps(message),
+                    room_type,
+                    room_id,
+                    user_id
+                )
+                
+            except Exception as e:
+                logger.debug(e)
+                error_msg = {
+                    "type": "error",
+                    "content": f"Invalid message format: {str(e)}"
+                }
+                await websocket.send_text(json.dumps(error_msg))
+                
+    except WebSocketDisconnect as e:
+        logger.info(f"User {user_login} disconnected: {str(e)}")
+    finally:
+        await manager.leave_room(user_id, room_type, room_id)
+        # Send leave notification
+        await manager.broadcast_to_room(
+            json.dumps({
+                "type": "system",
+                "content": f"{user_login} left the chat"
+            }),
+            room_type,
+            room_id,
+            user_id
+        )
 
 @router.post("/create_room")
 async def create_protected_room(
@@ -87,62 +181,33 @@ async def create_protected_room(
     user: GET_CURRENT_ACTIVE_USER,
     name: str = Form(...),
     password: Optional[str] = Form(None),
-
+    room_type: str = Form('private')  # Default to private
 ):
-    room_id = str(uuid.uuid4())
-    manager.create_protected_room(room_id, name, password)
-    return RedirectResponse(
-        url=f"/chat/private/{room_id}",
+    logger.debug(f'{name=} {password=}')
+    # Create the room and get its ID
+    room_id = await manager.create_protected_room(name, password)
+    
+    # Join the creator to the room
+    success = await manager.join_room(
+        user_id=str(user.id),
+        room_type=room_type,
+        room_id=room_id,
+        password=password  # Pass the same password used for creation
+    )
+
+    response = RedirectResponse(
+        url=f"/chat/{room_type}/{room_id}",
         status_code=303
     )
 
-
-@router.get("/rooms_list")
-async def list_rooms(user: GET_CURRENT_ACTIVE_USER):
-    return {
-           "public_rooms": manager.get_public_rooms(),
-           "user_rooms": manager.get_user_rooms(str(user.id))
-       }
-
-@router.websocket("/ws/chat/{room_type}/{room_id}")
-async def chat_endpoint(
-    websocket: WebSocket,
-    room_type: str,
-    room_id: str = None,
-    user_id: str = Query(...),
-    user_login: str = Query(...)
-):
+    request.session["room_password"] = password
+    request.session["room_id"] = room_id  # Good practice to store room_id too
     
-    try:
-        # Connect and join room
-        await manager.connect(websocket, user_id)
-        await manager.join_room(user_id, room_type, room_id)
-        
-        # Notify room
-        await manager.broadcast_to_room(
-            f"User {user_login} joined the {room_type} room {room_id}",
-            room_type,
-            room_id,
-            user_id
+    if not success:
+        # Handle join failure
+        return RedirectResponse(
+            url="/rooms",
+            status_code=303
         )
-        
-        while True:
-            data = await websocket.receive_text()
-            await manager.broadcast_to_room(
-                f"{user_login}: {data}",
-                room_type,
-                room_id,
-                user_id
-            )
-            
-    except WebSocketDisconnect:
-        await manager.leave_room(user_id, room_type, room_id)
-        await manager.broadcast_to_room(
-            f"User {user_login} left the {room_type} room {room_id}",
-            room_type,
-            room_id,
-            user_id
-        )
-    except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
-        await websocket.close(code=1011)
+    
+    return response

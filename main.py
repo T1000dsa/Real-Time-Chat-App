@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from logging.config import dictConfig
@@ -37,7 +38,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, title=settings.run.title)
 
-init_token_refresh_middleware(app)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.jwt.key.get_secret_value(),
+    session_cookie="session_cookie",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # can alter with time
@@ -45,6 +50,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+init_token_refresh_middleware(app)
 
 app.mount("/media", StaticFiles(directory=media_root), name="media")
 app.mount("/static", StaticFiles(directory=static_root), name="static")

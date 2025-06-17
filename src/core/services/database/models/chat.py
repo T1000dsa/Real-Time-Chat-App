@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
+from typing import Optional
+from datetime import datetime
 
 from .base import Base, int_pk, created_at
 from src.core.services.auth.domain.models.user import UserModel
@@ -27,6 +29,8 @@ class Message(Base):
     
     room: Mapped["ChatRoom"] = relationship(back_populates="messages")
     user: Mapped["UserModel"] = relationship()
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(default=None)
+    deleted_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
 
 class ChatParticipant(Base):
     __tablename__ = 'chat_participants'
