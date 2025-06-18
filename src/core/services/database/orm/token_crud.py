@@ -80,12 +80,13 @@ async def update_data_token(
     logger.debug(type(old_token_model))
     try:
 
-        old_token_model.revoked = True
-        old_token_model.replaced_by_token = token_scheme.token
-        session.add(old_token_model)
+        if old_token_model:
+            old_token_model.revoked = True
+            old_token_model.replaced_by_token = token_scheme.token
+            session.add(old_token_model)
 
-        await session.commit()
-        await session.refresh(old_token_model)
+            await session.commit()
+            await session.refresh(old_token_model)
         
     except IntegrityError as err:
         await session.rollback()

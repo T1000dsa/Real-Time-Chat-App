@@ -16,15 +16,6 @@ class TokenService(ABC):
 
     @abstractmethod 
     async def verify_token_unsafe(self, request: Request, token_type: str) -> dict: ...
-
-    @abstractmethod
-    async def rotate_tokens(
-        self, 
-        request:Request,
-        session: AsyncSession,
-        refresh_token: str, 
-        token_repo
-    ) -> dict: ...
     
     @abstractmethod
     async def set_secure_cookies(

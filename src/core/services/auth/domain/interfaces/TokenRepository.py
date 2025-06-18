@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
+from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.schemas.auth_schema import RefreshToken
 
 
@@ -21,3 +23,11 @@ class TokenRepository(ABC):
     
     @abstractmethod
     async def token_scheme_factory(self, **kwargs) -> RefreshToken: ...
+
+    @abstractmethod
+    async def refresh_token_flow(
+        self, 
+        request:Request,
+        session: AsyncSession,
+        jwt_service:JWTService
+        ): ...

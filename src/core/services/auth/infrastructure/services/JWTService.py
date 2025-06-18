@@ -7,7 +7,6 @@ from typing import Optional
 import logging
 
 from src.core.services.auth.domain.interfaces.TokenService import TokenService
-from src.core.services.auth.infrastructure.repositories.DatabaseTokenRepository import DatabaseTokenRepository
 from src.core.config.config import settings
 from src.utils.time_check import time_checker
 
@@ -76,99 +75,6 @@ class JWTService(TokenService):
             raise HTTPException(status_code=401, detail=f"Invalid token type")
         
         return payload
-    
-    @time_checker   
-    async def rotate_tokens(
-        self, 
-        request:Request,
-        session: AsyncSession,
-        db_repo:'DatabaseTokenRepository'
-    ) -> Optional[dict]:
-        """
-        1. Token Verification
-        2. If access token expired - > make new access token, if refresh token expired - > make both
-        3. return token/tokens
-        """
-        try:
-            # First check refresh token (more critical)
-            refresh_token = request.cookies.get(self.REFRESH_TYPE)
-            
-            if not refresh_token: # Extremely strange and rare situation
-                logger.error(refresh_token)
-                return None
-                
-            try:
-                refresh_payload = jwt.decode(refresh_token, self.secret_key, algorithms=[self.algorithm])
-                if refresh_payload.get("type") != self.REFRESH_TYPE: # also Extremely strange and rare situation
-                    logger.error('Refresh payloads error')
-                    return None
-                
-            except ExpiredSignatureError:
-                # gain user data from unsafe verification (only if expired) and creating new tokens
-                user_data = await self.verify_token_unsafe(request, self.REFRESH_TYPE)
-                logger.debug('New token pair')
-                result = await self.create_tokens(user_data)
-
-                # gain old and new tokens
-                old_refresh = request.cookies.get(self.REFRESH_TYPE)
-                new_refresh = result.get(self.REFRESH_TYPE)
-                old_token = await db_repo.verificate_refresh_token(session, old_refresh)
-
-                #logger.debug(f"{new_refresh=}")
-                #logger.debug(f"{old_refresh=}")
-                #logger.debug(f"{old_token=}")
-
-                # building new token scheme
-                date = self.REFRESH_TOKEN_EXPIRE + datetime.now(timezone.utc)
-
-                new_token_scheme = await db_repo.token_scheme_factory(
-                    user_id=old_token.user_id,
-                    token=new_refresh,
-                    expires_at=date,
-                    revoked=False,
-                    replaced_by_token=None,
-                    family_id=old_token.family_id,
-                    previous_token_id=old_token.id,
-                    device_info=old_token.device_info
-                )
-                # new token store
-                await db_repo.store_new_refresh_token(session, new_token_scheme)
-                
-                # update old token, revoke and replace
-                await db_repo.update_old_refresh_token(session, new_token_scheme, old_token)
-                return result
-            
-            except Exception as err:
-                logger.critical(err)
-                return None
-
-            # Then check access token
-            access_token = request.cookies.get(self.ACCESS_TYPE)
-            if access_token:
-                try:
-                    await self.verify_token(request, self.ACCESS_TYPE)
-                    # Access token still valid, no rotation needed
-                    logger.debug('Access token still valid')
-                    return None
-                except ExpiredSignatureError as err:
-                    logger.info(err)
-                    # Only access token expired - issue new access token
-                    logger.debug('New access token')
-                    return {
-                        self.ACCESS_TYPE: await self.create_token(
-                            {'sub': refresh_payload['sub']},
-                            self.ACCESS_TOKEN_EXPIRE,
-                            self.ACCESS_TYPE
-                        )
-                    }
-                except Exception as err:
-                    logger.critical(err)
-                    return None
-        
-        except Exception as e:
-            logger.error(f"Token rotation error: {e}")
-            return None
-
 
     @time_checker
     async def set_secure_cookies(self, response:Response, tokens:dict) -> Response:
