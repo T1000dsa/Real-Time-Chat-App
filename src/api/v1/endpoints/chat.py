@@ -10,6 +10,8 @@ from src.core.services.chat.chat_manager import manager
 from src.core.config.config import templates
 from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER
 from src.utils.prepared_response import prepare_template 
+from src.core.services.cache.redis import manager as redis_manager
+from src.core.config.config import settings
 
 
 router = APIRouter()
@@ -84,8 +86,11 @@ async def chat_endpoint(
     room_id: str,
     user_id: str = Query(...),
     user_login: str = Query(...),
-    password: Optional[str] = Query(None)
+    password: str = Query(None),
 ):
+    if password is None:
+        password = manager.protected_cons.get(f'room_password_{room_id}', None)
+
 
     logger.debug(f"Current rooms structure: {manager.rooms}")
     
@@ -200,8 +205,10 @@ async def create_protected_room(
         status_code=303
     )
 
-    request.session["room_password"] = password
-    request.session["room_id"] = room_id  # Good practice to store room_id too
+    #request.session["room_password"] = password
+    #request.session["room_id"] = room_id  # Good practice to store room_id too
+    manager.protected_cons[f'room_password_{room_id}'] = password
+    manager.protected_cons[f'room_id'] = room_id
     
     if not success:
         # Handle join failure

@@ -19,3 +19,5 @@ class ConnectionManager:
 
     async def publish(self, channel: str, message: str):
         await self.redis.publish(channel, message)
+
+manager = ConnectionManager()

@@ -42,7 +42,7 @@ class AuthProvider(AuthRepository):
         self._email = email_service
 
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def authenticate_user(self, login, password) -> dict:
         """
         Three-step authentication. 
@@ -100,12 +100,12 @@ class AuthProvider(AuthRepository):
         return tokens
     
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def register_user(self, user_data:UserSchema) -> None:
         await self._repo.create_user(self.session, user_data)
 
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def gather_user_data(self, request:Request) -> UserModel:
         try:
             verified_token = await self._token.verify_token(request, self._token.ACCESS_TYPE)
@@ -122,18 +122,18 @@ class AuthProvider(AuthRepository):
             raise err
         
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def set_cookies(self, response:Response, tokens:dict) -> Response:
         settle = await self._token.set_secure_cookies(response, tokens)
         return settle
     
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def token_rotate(self, request) -> Optional[dict]:
         return await self._db.refresh_token_flow(request, self.session, self._token)
     
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def logout(self, request: Request) -> Response:
         try:
             response = RedirectResponse(url=f'{main_prefix}/login', status_code=302)
@@ -173,11 +173,11 @@ class AuthProvider(AuthRepository):
             return await self._token.clear_tokens(response)
         
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def update_profile_user(self, user_id:int,data:dict) -> None:
         await self._repo.update_profile(self.session, user_id, data)
 
     @time_checker
-    @exception_handler
+    #@exception_handler
     async def password_change(self, user:UserModel, new_pass:str, email:str):
         await self._repo.change_password_email(self.session, user, new_pass, email)

@@ -29,6 +29,8 @@ class ConnectionManager:
         # Track user's rooms: user_id -> set of (room_type, room_id) tuples
         self.user_rooms: Dict[str, Set[Tuple[str, str]]] = defaultdict(set)
 
+        self.protected_cons:dict = {}
+
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
         self.active_connections[client_id] = websocket

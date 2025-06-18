@@ -40,3 +40,5 @@ def init_token_refresh_middleware(app: FastAPI):
 
         except Exception as e:
             logger.error(f"Middleware error: {str(e)}")
+            auth = create_auth_provider(db_session)
+            return await auth.logout()

@@ -35,6 +35,9 @@ class RedisSettings(BaseModel):
     host:str = 'localhost'
     port:int = 6379
     db:int = 0
+    cache_time:int = 1
+    cache_time_auth:int = 1
+    cache_auth_attempts:int = 5
 
 class CurrentDB(BaseModel):
     database:str = 'postgres'
