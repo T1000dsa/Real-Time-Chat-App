@@ -97,7 +97,7 @@ async def chat_endpoint(
     # Initialize room if it doesn't exist
     if room_type not in manager.rooms or room_id not in manager.rooms[room_type]:
         if room_type == 'private':
-            await websocket.close(code=4004, reason="Room does not exist")
+            await websocket.close(code=404, reason="Room does not exist")
             return
         # For general rooms, create automatically
         manager.rooms[room_type][room_id] = {
@@ -197,7 +197,7 @@ async def create_protected_room(
         user_id=str(user.id),
         room_type=room_type,
         room_id=room_id,
-        password=password  # Pass the same password used for creation
+        password=password
     )
 
     response = RedirectResponse(
@@ -205,8 +205,6 @@ async def create_protected_room(
         status_code=303
     )
 
-    #request.session["room_password"] = password
-    #request.session["room_id"] = room_id  # Good practice to store room_id too
     manager.protected_cons[f'room_password_{room_id}'] = password
     manager.protected_cons[f'room_id'] = room_id
     

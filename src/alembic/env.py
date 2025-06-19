@@ -10,7 +10,7 @@ from src.core.config.config import settings
 from src.core.services.database.models.base import Base
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
-from src.core.services.database.models.chat import ChatRoom, Message, ChatParticipant
+from src.core.services.database.models.chat import MessageModel
 # alembic revision --autogenerate -m "init"
 
 # this is the Alembic Config object, which provides

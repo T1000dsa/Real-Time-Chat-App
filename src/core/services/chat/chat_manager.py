@@ -1,14 +1,14 @@
 from fastapi import WebSocket
-from typing import Dict, Set, List, Tuple
+from typing import Dict, Set, List, Tuple, Optional
 from collections import defaultdict
 import logging
+import uuid
 
+from src.core.dependencies.auth_injection import create_auth_provider
+from src.core.dependencies.db_injection import db_helper
 
 logger = logging.getLogger(__name__)
 
-from typing import Dict, Set, List, Tuple, Optional
-from collections import defaultdict
-import uuid
 
 class ConnectionManager:
     def __init__(self):
@@ -144,6 +144,11 @@ class ConnectionManager:
         if room_type in self.rooms and room_id in self.rooms[room_type]:
             room = self.rooms[room_type][room_id]
             disconnected_clients = []
+
+            try:
+                await self.save_message(message, room_id, sender_id)
+            except Exception as e:
+                logger.error(f"Failed to save message: {str(e)}")
             
             # Iterate over the clients in the room
             for user_id in list(room['clients']):  # Note: accessing room['clients']
@@ -157,6 +162,16 @@ class ConnectionManager:
             for user_id in disconnected_clients:
                 await self.leave_room(user_id, room_type, room_id)
                 self.disconnect(user_id)
+
+    async def save_message(self, message:str, room_id:str, sender_id:str):
+        async with db_helper.async_session() as db_session:
+            auth = create_auth_provider(db_session)
+            await auth._db.save_message_db(auth.session, message, room_id, sender_id)
+
+    async def receive_messages(self, room_id:str, sender_id:str):
+        async with db_helper.async_session() as db_session:
+            auth = create_auth_provider(db_session)
+            await auth._db.receive_messages(auth.session, room_id, sender_id)
         
 
 manager = ConnectionManager()

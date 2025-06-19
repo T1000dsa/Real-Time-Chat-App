@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 
 
-class MessageModel(BaseModel):
-    message: str
+class MessabeSchemaBase(BaseModel):
+    user_id:int
+    room_id :str
 
-class MessageModelRoom(BaseModel):
-    client_id:str
-    room :str
+class MessageSchema(MessabeSchemaBase):
+    message: str
 
 class ConnectionTicket(BaseModel):
     websocket_url: str

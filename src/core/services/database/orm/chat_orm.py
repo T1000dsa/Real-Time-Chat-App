@@ -4,23 +4,31 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy import select, update, delete, join
 import logging
 
-from src.core.services.database.models.chat import Message
+from src.core.services.database.models.chat import MessageModel
+from src.core.schemas.message_shema import MessageSchema, MessabeSchemaBase
 
 
 logger = logging.getLogger(__name__)
 
+async def select_messages(
+    session: AsyncSession,
+    message_data:MessabeSchemaBase
+) -> MessageModel:
+    query = select(MessageModel).where(MessageModel.room_id==message_data.room_id and MessageModel.user_id == message_data.user_id)
+    res = (await session.execute(query)).scalars().all()
+    return res
+
 async def save_message(
     session: AsyncSession,
-    room_id: str,
-    user_id: str,
-    content: str
-) -> Message:
-    message = Message(
-        room_id=room_id,
-        user_id=user_id,
-        content=content
+    message_data:MessageSchema
+):
+    logger.debug('Saving message...')
+    message = MessageModel(
+        room_id=message_data.room_id,
+        user_id=message_data.user_id,
+        message=message_data.message
     )
     session.add(message)
     await session.commit()
     await session.refresh(message)
-    return message
+    logger.debug('Message saved!')

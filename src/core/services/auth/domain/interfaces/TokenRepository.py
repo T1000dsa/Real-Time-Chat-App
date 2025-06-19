@@ -31,3 +31,9 @@ class TokenRepository(ABC):
         session: AsyncSession,
         jwt_service:JWTService
         ): ...
+    
+    @abstractmethod
+    async def save_message_db(self, session:AsyncSession, message:str, room_id:str, sender_id:str): ...
+
+    @abstractmethod
+    async def receive_messages(self, session:AsyncSession, room_id:str, sender_id:str): ...
