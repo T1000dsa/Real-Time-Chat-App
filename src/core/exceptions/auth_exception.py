@@ -39,5 +39,10 @@ inactive_user_exception = AuthException(
     detail="inactive_user",
 )
 
+false_activation_user_exception = AuthException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="This user already active/inactive",
+)
+
 #def setup_exception_handlers(app: FastAPI):
     #app.add_exception_handler(AuthException, auth_exception_handler)

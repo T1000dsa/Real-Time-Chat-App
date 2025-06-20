@@ -3,6 +3,7 @@ from typing import Dict, Set, List, Tuple, Optional
 from collections import defaultdict
 import logging
 import uuid
+import json
 
 from src.core.dependencies.auth_injection import create_auth_provider
 from src.core.dependencies.db_injection import db_helper
@@ -146,7 +147,8 @@ class ConnectionManager:
             disconnected_clients = []
 
             try:
-                await self.save_message(message, room_id, sender_id)
+                message_str:dict = json.loads(message)
+                await self.save_message(message_str.get('content'), room_id, sender_id)
             except Exception as e:
                 logger.error(f"Failed to save message: {str(e)}")
             

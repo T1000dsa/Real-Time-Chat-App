@@ -10,8 +10,6 @@ from src.core.services.chat.chat_manager import manager
 from src.core.config.config import templates
 from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER
 from src.utils.prepared_response import prepare_template 
-from src.core.services.cache.redis import manager as redis_manager
-from src.core.config.config import settings
 
 
 router = APIRouter()

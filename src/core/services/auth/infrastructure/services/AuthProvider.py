@@ -15,7 +15,7 @@ from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
 from src.core.services.auth.infrastructure.services.EmailService import EmailService
 from src.core.services.auth.infrastructure.repositories.DatabaseTokenRepository import DatabaseTokenRepository
-from src.core.exceptions.auth_exception import credentials_exception, inactive_user_exception
+from src.core.exceptions.auth_exception import credentials_exception, AuthException
 from src.core.exceptions.except_catcher import exception_handler
 from src.utils.time_check import time_checker
 from src.core.config.config import main_prefix
@@ -76,8 +76,12 @@ class AuthProvider(AuthRepository):
         logger.debug(f'tokens created successfully')
 
         # activate user
-        await self._repo.activate_user(self.session, user.id)
-        logger.debug(f'User {user.login} activated')
+        try:
+            await self._repo.activate_user(self.session, user.id)
+            logger.debug(f'User {user.login} activated')
+        except AuthException as err:
+            logger.error(err)
+            raise err
 
         # Fourth step
         refresh_token = tokens.get(self._token.REFRESH_TYPE)

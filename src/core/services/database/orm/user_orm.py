@@ -8,6 +8,7 @@ from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.user import UserSchema
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.utils.time_check import time_checker
+from src.core.exceptions.auth_exception import false_activation_user_exception
 
 
 logger = logging.getLogger(__name__)
@@ -114,8 +115,8 @@ async def user_activate(session:AsyncSession, user_id:int, activate:bool):
     if user is None:
         raise ValueError(f"User with id {user_id} not found")
     
-    #if user.is_active == activate:
-        #raise ValueError(f"User is already {activate}")
+    if user.is_active == activate:
+        raise false_activation_user_exception
     
     user.is_active = activate
     

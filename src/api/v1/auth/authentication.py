@@ -53,17 +53,25 @@ async def handle_login(
     
     except HTTPException as err:
         logger.error(f"Login failed: {err}")
+        if hasattr(err, 'detail'):
+            detail = str(err.detail)
+        else:
+            detail = str(err)
         return await render_login_form(
             request, 
-            errors=f"{err.detail}",
+            errors=f"{detail}",
             form_data=form_data
         )
 
     except Exception as err:
         logger.error(f"Login failed: {err}")
+        if hasattr(err, 'detail'):
+            detail = str(err.detail)
+        else:
+            detail = str(err)
         return await render_login_form(
             request, 
-            errors="Something went wrong", # 'Something went wrong'
+            errors=detail, 
             form_data=form_data
         )
 
