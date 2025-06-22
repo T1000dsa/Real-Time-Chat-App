@@ -77,10 +77,10 @@
                 addErrorMessage(data.content);
                 break;
             case 'message':
-                addMessage(data.sender, data.content, data.timestamp);
+                addMessage(data);
                 break;
             case 'historical':
-                addMessage(data.sender, data.content, data.timestamp);
+                addMessage(data);
                 break;
             default:
                 console.warn('Unknown message type:', data.type);
@@ -123,22 +123,32 @@
 
     // Helper function to add system messages
     function addSystemMessage(message) {
-        addMessage("System", message);
+        const system_data = {'type':'System', 'content':message};
+        addMessage(system_data);
     }
 
     // Helper function to add messages to the chat
-    function addMessage(sender, message) {
+    function addMessage(data) {
         const msgElement = document.createElement('div');
+
+        console.log( data, data.sender, data.type, data.timestamp);
         
         // Different styling for system vs user messages
-        if (sender === "System") {
+        if (data.sender === "System") {
             msgElement.className = "system-message";
-            msgElement.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
-        } else {
+            msgElement.innerHTML = `[${new Date().toLocaleTimeString()}] ${data.content}`;
+        } 
+        else if (data.type == "historical") {
+            msgElement.className = "historical-message";
+            msgElement.innerHTML = `[${data.timestamp}] ${data.content}`;
+
+        }
+
+        else {
             msgElement.innerHTML = `
                 [${new Date().toLocaleTimeString()}]
-                ${sender}:
-                <span class="message-content">${message}</span>
+                ${data.sender}:
+                <span class="message-content">${data.content}</span>
             `;
         }
         
@@ -153,9 +163,10 @@
         try {
             const messageId = Date.now().toString();
             displayedMessageIds.add(messageId);
+            const data_message = {'sender':userLogin, 'content':message, 'message_id':messageId}
             
             // Add to your chat immediately with the ID
-            addMessage(userLogin, message, messageId);
+            addMessage(data_message);
             
             // Send both message and ID to server
             ws.send(JSON.stringify({

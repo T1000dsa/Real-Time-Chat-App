@@ -9,7 +9,6 @@ import json
 from src.core.dependencies.auth_injection import create_auth_provider
 from src.core.dependencies.db_injection import db_helper
 from src.core.services.database.models.chat import MessageModel
-from src.core.services.database.orm.user_orm import select_data_user_id
 
 
 logger = logging.getLogger(__name__)
@@ -152,7 +151,11 @@ class ConnectionManager:
 
             try:
                 message_str:dict = json.loads(message)
-                await self.save_message(message_str.get('content'), room_id, sender_id)
+                async with db_helper.async_session() as db_session:
+                    auth = create_auth_provider(db_session)
+                    user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(sender_id))
+                    await self.save_message(f'{user_data.login}: {message_str.get('content')}', room_id, sender_id)
+                    
             except Exception as e:
                 logger.error(f"Failed to save message: {str(e)}")
             
