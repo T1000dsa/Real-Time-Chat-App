@@ -79,6 +79,9 @@
             case 'message':
                 addMessage(data.sender, data.content, data.timestamp);
                 break;
+            case 'historical':
+                addMessage(data.sender, data.content, data.timestamp);
+                break;
             default:
                 console.warn('Unknown message type:', data.type);
         }

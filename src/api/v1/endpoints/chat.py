@@ -10,6 +10,7 @@ from src.core.services.chat.chat_manager import manager
 from src.core.config.config import templates
 from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER
 from src.utils.prepared_response import prepare_template 
+from src.core.services.database.models.chat import MessageModel
 
 
 router = APIRouter()
@@ -117,11 +118,25 @@ async def chat_endpoint(
             await websocket.close(code=4003, reason="Invalid password or room")
             return
         
+
+        result:list[MessageModel] =  await manager.receive_messages(
+            room_id,
+            user_id
+        )
+        
+        await manager.preload_messages(
+            result,
+            user_id,
+            room_id,
+            user_login
+            
+        )
+        
         # Send join notification
         await manager.broadcast_to_room(
             json.dumps({
                 "type": "system",
-                "content": f"{user_login} joined the chat"
+                "content":f"{user_login} joined the chat"
             }),
             room_type,
             room_id,

@@ -1,12 +1,16 @@
 from fastapi import WebSocket
 from typing import Dict, Set, List, Tuple, Optional
 from collections import defaultdict
+from datetime import datetime 
 import logging
 import uuid
 import json
 
 from src.core.dependencies.auth_injection import create_auth_provider
 from src.core.dependencies.db_injection import db_helper
+from src.core.services.database.models.chat import MessageModel
+from src.core.services.database.orm.user_orm import select_data_user_id
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +82,6 @@ class ConnectionManager:
         room = self.rooms[room_type][room_id]
         
         # Password check for private rooms
-        logger.debug(f"{room['password']} {password}")
         if room_type == 'private' and room.get('password') and room['password'] != password:
             logger.debug("Password mismatch for private room")
             return False
@@ -135,7 +138,8 @@ class ConnectionManager:
     async def send_personal_message(self, message: str, client_id: str):
         if client_id in self.active_connections:
             try:
-                logger.debug(f'Sending msg {message[:10]} from {client_id}')
+                #message_str:dict = json.loads(message)
+                #logger.debug(f'Sending msg {message_str.get('content')} from {client_id}')
                 await self.active_connections[client_id].send_text(message)
             except Exception as e:
                 logger.error(f"Error sending message to {client_id}: {str(e)}")
@@ -165,6 +169,36 @@ class ConnectionManager:
                 await self.leave_room(user_id, room_type, room_id)
                 self.disconnect(user_id)
 
+    async def preload_messages(self, messages: list[MessageModel], client_id: str, room_id:str, user_login:str):
+        logger.debug(len(messages)) # ensure it's 10
+        if client_id in self.active_connections:
+            try:
+                for item in messages:
+                    if item.room_id == room_id:
+                        try:
+                            async with db_helper.async_session() as db_session:
+                                auth = create_auth_provider(db_session)
+                                user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(item.user_id))
+                                logger.debug(item.message)
+                                message_data = json.dumps({
+                                    "id": str(uuid.uuid4()),
+                                    "type": "historical",
+                                    "sender_id": item.user_id,
+                                    "sender": user_data.login,
+                                    "content": item.message,
+                                    "timestamp": item.created_at.isoformat()
+                                })
+                    
+                                await self.active_connections[client_id].send_text(message_data)
+                        except Exception as e:
+                            logger.error(f"Error sending message to {client_id}: {str(e)}")
+                            #self.disconnect(client_id)
+
+            except Exception as e:
+                logger.error(f"Error sending message to {client_id}: {str(e)}")
+                self.disconnect(client_id)
+
+
     async def save_message(self, message:str, room_id:str, sender_id:str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
@@ -173,7 +207,7 @@ class ConnectionManager:
     async def receive_messages(self, room_id:str, sender_id:str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
-            await auth._db.receive_messages(auth.session, room_id, sender_id)
+            return await auth._db.receive_messages(auth.session, room_id, sender_id)
         
 
 manager = ConnectionManager()

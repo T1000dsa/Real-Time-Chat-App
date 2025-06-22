@@ -15,7 +15,7 @@ async def select_messages(
     message_data:MessabeSchemaBase
 ) -> MessageModel:
     query = select(MessageModel).where(MessageModel.room_id==message_data.room_id and MessageModel.user_id == message_data.user_id)
-    res = (await session.execute(query)).scalars().all()
+    res = (await session.execute(query)).scalars().all()[-20:]
     return res
 
 async def save_message(
