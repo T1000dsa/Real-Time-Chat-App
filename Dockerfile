@@ -9,12 +9,17 @@ ENV PYTHONFAULTHANDLER=1 \
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Install poetry
+RUN pip install poetry
 
-RUN apt-get update && apt-get install -y wait-for-it
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Copy only requirements first to leverage Docker cache
+COPY pyproject.toml poetry.lock* ./
 
+# Install project dependencies
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-root --no-interaction --no-ansi
+
+# Copy the rest of the files
 COPY . .
 
 COPY .env .env

@@ -3,10 +3,10 @@ from pydantic import BaseModel, field_validator, SecretStr, EmailStr
 
 class RunConfig(BaseModel):
     """
-    host:str default - 127.0.0.1
+    host:str default - 0.0.0.0
     port:int default - 8000
     """
-    host:str = '127.0.0.1'
+    host:str = '0.0.0.0'
     port:int = 8000
     title:str = 'real-time chat proj'
 
