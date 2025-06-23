@@ -64,26 +64,25 @@
     try {
         const data = JSON.parse(event.data);
         
-        // Skip duplicates
-        if (displayedMessageIds.has(data.id)) return;
+        // Skip duplicates for non-system messages
+        if (data.type !== 'system' && displayedMessageIds.has(data.id)) return;
         displayedMessageIds.add(data.id);
         
-        // Handle different message types
+        // Handle all message types
         switch(data.type) {
             case 'system':
-                addSystemMessage(data.content);
+                addMessage(data);
                 break;
             case 'error':
                 addErrorMessage(data.content);
                 break;
             case 'message':
-                addMessage(data);
-                break;
             case 'historical':
                 addMessage(data);
                 break;
             default:
                 console.warn('Unknown message type:', data.type);
+                addMessage(data);
         }
     } catch (e) {
         console.error('Error parsing message:', e);
@@ -123,38 +122,49 @@
 
     // Helper function to add system messages
     function addSystemMessage(message) {
-        const system_data = {'type':'System', 'content':message};
-        addMessage(system_data);
-    }
-
+    addMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        sender: 'System',
+        content: message,
+        timestamp: new Date().toISOString()
+    });
+}
     // Helper function to add messages to the chat
+    // Helper function to add messages to the chat
+    let lastSystemMessage = {
+    content: null,
+    timestamp: null
+};
+
+    // Remove the duplicate tracking for system messages
     function addMessage(data) {
-        const msgElement = document.createElement('div');
+    const msgElement = document.createElement('div');
+    const timestamp = data.timestamp ? 
+        new Date(data.timestamp).toLocaleTimeString() : 
+        new Date().toLocaleTimeString();
 
-        console.log( data, data.sender, data.type, data.timestamp);
-        
-        // Different styling for system vs user messages
-        if (data.sender === "System") {
-            msgElement.className = "system-message";
-            msgElement.innerHTML = `[${new Date().toLocaleTimeString()}] ${data.content}`;
-        } 
-        else if (data.type == "historical") {
-            msgElement.className = "historical-message";
-            msgElement.innerHTML = `[${data.timestamp}] ${data.content}`;
-
-        }
-
-        else {
-            msgElement.innerHTML = `
-                [${new Date().toLocaleTimeString()}]
-                ${data.sender}:
-                <span class="message-content">${data.content}</span>
-            `;
-        }
-        
-        chatDiv.appendChild(msgElement);
-        chatDiv.scrollTop = chatDiv.scrollHeight;
+    // Handle all message types
+    if (data.type === 'system') {
+        msgElement.className = "system-message";
+        msgElement.innerHTML = `[${timestamp}] ${data.content}`;
+    } 
+    else if (data.type === "historical") {
+        msgElement.className = "historical-message";
+        msgElement.innerHTML = `[${timestamp}] ${data.content}`;
     }
+    else {
+        msgElement.className = "user-message";
+        msgElement.innerHTML = `
+            [${timestamp}]
+            ${data.sender}:
+            <span class="message-content">${data.content}</span>
+        `;
+    }
+    
+    chatDiv.appendChild(msgElement);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
 
     // Function to send messages
     function sendMessage() {

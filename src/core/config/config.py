@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path 
 from fastapi.templating import Jinja2Templates
+import logging
 import os
 
 from src.core.config.models import (
@@ -12,6 +13,9 @@ from src.core.config.models import (
     Email_Settings,
     JwtConfig
     )
+
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):

@@ -148,19 +148,26 @@ class ConnectionManager:
         if room_type in self.rooms and room_id in self.rooms[room_type]:
             room = self.rooms[room_type][room_id]
             disconnected_clients = []
-
+            
+            # Only save user messages, not system messages
             try:
-                message_str:dict = json.loads(message)
-                async with db_helper.async_session() as db_session:
-                    auth = create_auth_provider(db_session)
-                    user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(sender_id))
-                    await self.save_message(f'{user_data.login}: {message_str.get('content')}', room_id, sender_id)
-                    
+                message_dict = json.loads(message)
+                logger.debug(message_dict)
+                if message_dict.get('type') == 'message':  # Only save actual user messages
+                    async with db_helper.async_session() as db_session:
+                        auth = create_auth_provider(db_session)
+                        user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(sender_id))
+                        await self.save_message(
+                            f'{user_data.login}: {message_dict.get("content")}', 
+                            room_type,
+                            room_id, 
+                            sender_id
+                        )
             except Exception as e:
                 logger.error(f"Failed to save message: {str(e)}")
             
-            # Iterate over the clients in the room
-            for user_id in list(room['clients']):  # Note: accessing room['clients']
+            # Broadcast to all clients except sender
+            for user_id in list(room['clients']):
                 if user_id != sender_id:
                     try:
                         await self.send_personal_message(message, user_id)
@@ -172,40 +179,36 @@ class ConnectionManager:
                 await self.leave_room(user_id, room_type, room_id)
                 self.disconnect(user_id)
 
-    async def preload_messages(self, messages: list[MessageModel], client_id: str, room_id:str, user_login:str):
-        logger.debug(len(messages)) # ensure it's 10
-        if client_id in self.active_connections:
-            try:
-                for item in messages:
-                    if item.room_id == room_id:
-                        try:
-                            async with db_helper.async_session() as db_session:
-                                auth = create_auth_provider(db_session)
-                                user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(item.user_id))
-                                logger.debug(item.message)
-                                message_data = json.dumps({
-                                    "id": str(uuid.uuid4()),
-                                    "type": "historical",
-                                    "sender_id": item.user_id,
-                                    "sender": user_data.login,
-                                    "content": item.message,
-                                    "timestamp": item.created_at.isoformat()
-                                })
-                    
-                                await self.active_connections[client_id].send_text(message_data)
-                        except Exception as e:
-                            logger.error(f"Error sending message to {client_id}: {str(e)}")
-                            #self.disconnect(client_id)
+    async def preload_messages(self, messages: list[MessageModel], client_id: str, room_type:str, room_id: str, user_login: str):
+        logger.debug(f'{client_id=} {room_id=} {room_type=}')
+        if client_id not in self.active_connections:
+            return
 
-            except Exception as e:
-                logger.error(f"Error sending message to {client_id}: {str(e)}")
-                self.disconnect(client_id)
+        unique_messages = set()  # Track already sent messages
+        for item in messages:
+            if item.room_id == room_id and item.message not in unique_messages and item.room_type == room_type:
+                unique_messages.add(item.message)
+                try:
+                    async with db_helper.async_session() as db_session:
+                        auth = create_auth_provider(db_session)
+                        user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(item.user_id))
+                        message_data = json.dumps({
+                            "id": str(item.id),  # Use DB ID instead of generating new one
+                            "type": "historical",
+                            "sender_id": item.user_id,
+                            "sender": user_data.login,
+                            "content": item.message,
+                            "timestamp": item.created_at.isoformat()
+                        })
+                        await self.active_connections[client_id].send_text(message_data)
+                except Exception as e:
+                    logger.error(f"Error sending historical message: {str(e)}")
 
 
-    async def save_message(self, message:str, room_id:str, sender_id:str):
+    async def save_message(self, message:str, room_type:str, room_id:str, sender_id:str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
-            await auth._db.save_message_db(auth.session, message, room_id, sender_id)
+            await auth._db.save_message_db(auth.session, message, room_type, room_id, sender_id)
 
     async def receive_messages(self, room_id:str, sender_id:str):
         async with db_helper.async_session() as db_session:

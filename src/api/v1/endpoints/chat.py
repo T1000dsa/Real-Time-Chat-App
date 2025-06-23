@@ -127,6 +127,7 @@ async def chat_endpoint(
         await manager.preload_messages(
             result,
             user_id,
+            room_type,
             room_id,
             user_login
             
@@ -134,14 +135,17 @@ async def chat_endpoint(
         
         # Send join notification
         await manager.broadcast_to_room(
-            json.dumps({
-                "type": "system",
-                "content":f"{user_login} joined the chat"
-            }),
-            room_type,
-            room_id,
-            user_id
-        )
+        json.dumps({
+            "id": str(uuid.uuid4()),
+            "type": "system",
+            "sender": "System",  # Explicit sender
+            "content": f"{user_login} joined the chat",
+            "timestamp": datetime.now().isoformat()
+        }),
+        room_type,
+        room_id,
+        user_id
+    )
         
         # Main message loop
         while True:
@@ -182,16 +186,19 @@ async def chat_endpoint(
         logger.info(f"User {user_login} disconnected: {str(e)}")
     finally:
         await manager.leave_room(user_id, room_type, room_id)
-        # Send leave notification
+        # Send SINGLE leave notification with unique ID
         await manager.broadcast_to_room(
-            json.dumps({
-                "type": "system",
-                "content": f"{user_login} left the chat"
-            }),
-            room_type,
-            room_id,
-            user_id
-        )
+        json.dumps({
+            "id": str(uuid.uuid4()),
+            "type": "system",
+            "sender": "System",
+            "content": f"{user_login} left the chat",
+            "timestamp": datetime.now().isoformat()
+        }),
+        room_type,
+        room_id,
+        user_id
+    )
 
 @router.post("/create_room")
 async def create_protected_room(

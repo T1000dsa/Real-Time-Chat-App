@@ -155,8 +155,8 @@ class DatabaseTokenRepository(TokenRepository):
         return RefreshToken(**kwargs)
     
     @time_checker
-    async def save_message_db(self, session:AsyncSession, message:str, room_id:str, sender_id:str):
-        message_data = MessageSchema(user_id=sender_id, room_id=room_id, message=message)
+    async def save_message_db(self, session:AsyncSession, message:str, room_type:str, room_id:str, sender_id:str):
+        message_data = MessageSchema(user_id=sender_id, room_type=room_type, room_id=room_id, message=message)
         await save_message(session, message_data)
 
     @time_checker

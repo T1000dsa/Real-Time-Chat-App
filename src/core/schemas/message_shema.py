@@ -1,9 +1,11 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class MessabeSchemaBase(BaseModel):
     user_id:int
     room_id :str
+    room_type:Optional[str] = None
 
 class MessageSchema(MessabeSchemaBase):
     message: str

@@ -12,6 +12,7 @@ class MessageModel(Base):
     
     id: Mapped[int_pk]
     room_id: Mapped[str] = mapped_column(String)
+    room_type: Mapped[str] = mapped_column(String, default=None, nullable=True)
     user_id: Mapped[int] = mapped_column(Integer) #ForeignKey("users.id", ondelete='CASCADE'))
     message: Mapped[str]
     created_at: Mapped[created_at]

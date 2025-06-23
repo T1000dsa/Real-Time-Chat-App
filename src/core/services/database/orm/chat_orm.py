@@ -25,6 +25,7 @@ async def save_message(
     logger.debug('Saving message...')
     message = MessageModel(
         room_id=message_data.room_id,
+        room_type=message_data.room_type,
         user_id=message_data.user_id,
         message=message_data.message
     )
