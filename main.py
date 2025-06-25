@@ -26,6 +26,9 @@ async def lifespan(app: FastAPI):
     logger = logging.getLogger(__name__)
     logger.info(main_url)
     #logger.info(settings)
+    app.mount("/media", StaticFiles(directory=media_root), name="media")
+    app.mount("/static", StaticFiles(directory=static_root), name="static")
+
     
     yield  # FastAPI handles requests here
 
@@ -51,9 +54,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 init_token_refresh_middleware(app)
-
-app.mount("/media", StaticFiles(directory=media_root), name="media")
-app.mount("/static", StaticFiles(directory=static_root), name="static")
 
 app.include_router(heath_router)
 app.include_router(main_router)

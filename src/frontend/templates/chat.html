@@ -120,6 +120,39 @@
     }
 };
 
+function formatTimestamp(isoString, isHistorical = false) {
+    const date = isoString ? new Date(isoString) : new Date();
+    
+    if (isHistorical) {
+        // For historical messages (UTC+0), apply local timezone offset
+        const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        const timeStr = localTime.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const dateStr = localTime.toLocaleDateString([], {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        return `${dateStr}, ${timeStr}`;
+    } else {
+        // For real-time messages (already local), use as-is
+        const timeStr = date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const dateStr = date.toLocaleDateString([], {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        return `${dateStr}, ${timeStr}`;
+    }
+}
+
     // Helper function to add system messages
     function addSystemMessage(message) {
     addMessage({
@@ -140,9 +173,9 @@
     // Remove the duplicate tracking for system messages
     function addMessage(data) {
     const msgElement = document.createElement('div');
-    const timestamp = data.timestamp ? 
-        new Date(data.timestamp).toLocaleTimeString() : 
-        new Date().toLocaleTimeString();
+    const timestamp = formatTimestamp(data.timestamp, data.type === 'historical');
+    console.log(timestamp, data.type === 'historical')
+        
 
     // Handle all message types
     if (data.type === 'system') {
@@ -155,11 +188,7 @@
     }
     else {
         msgElement.className = "user-message";
-        msgElement.innerHTML = `
-            [${timestamp}]
-            ${data.sender}:
-            <span class="message-content">${data.content}</span>
-        `;
+        msgElement.innerHTML = `[${timestamp}] ${data.sender}: ${data.content}`;
     }
     
     chatDiv.appendChild(msgElement);
