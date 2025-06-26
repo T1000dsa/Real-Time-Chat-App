@@ -3,13 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy import select, update, delete, join
 from typing import Union, Optional, Type
-from datetime import datetime, timezone
-from jose.exceptions import ExpiredSignatureError
 import logging
 
 from src.utils.time_check import time_checker
 from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
 from src.core.schemas.auth_schema import RefreshToken
+from src.core.services.auth.domain.models.user import UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -136,25 +135,15 @@ async def delete_data_by_user(
         raise err
         
 @time_checker
-async def get_refresh_token_data(session: AsyncSession, token:str) -> RefreshTokenModel:
+async def get_refresh_token_data(session: AsyncSession, user:UserModel) -> RefreshTokenModel:
     logger.debug('in get_refresh_token_data')
-    stm = (select(RefreshTokenModel).where(RefreshTokenModel.token == token))
+    stm = select(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
     result = await session.execute(stm)
     result = result.scalars().all()
-    valid_tokens:list[RefreshTokenModel] = []
-    for item in result:
-        if item.revoked:
-            continue
-        if item.expires_at <= datetime.now():
-            item.revoked = True
-            await session.commit()
-            continue
-        valid_tokens.append(item)
-
-    freshest = sorted(valid_tokens, key=lambda x:x.created_at)[:-1]
-    if freshest:
-        return freshest
-    logger.debug('get_refresh_token_data end')
+    if result:
+        return max(result, key=lambda x:x.created_at)
+    return None
+    
 
 @time_checker
 async def revoke_refresh_token(session: AsyncSession, token:str) -> None:

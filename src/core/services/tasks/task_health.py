@@ -1,8 +1,8 @@
 import logging
 
-from src.core.dependencies.db_injection import AsyncSession, db_helper
 from src.core.services.tasks.celery import celery
 from src.core.config.config import settings
+
 
 logger = logging.getLogger(__name__)
 

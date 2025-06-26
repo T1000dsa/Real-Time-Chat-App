@@ -7,7 +7,8 @@ celery = Celery(
     backend=f'redis://{settings.redis.host}:{settings.redis.port}/0',
     include=[
         'src.core.services.tasks.task_health',
-        'src.core.services.tasks.email_task'
+        'src.core.services.tasks.email_task',
+        'src.core.services.tasks.db_tasks'
              ]
 )
 
@@ -25,5 +26,10 @@ celery.conf.beat_schedule = {
     'healthcheck-every-10-seconds': {
         'task': 'src.core.services.tasks.task_health.healthcheck',
         'schedule': 10.0,
+    },
+
+    'db_disable_users': {
+        'task': 'src.core.services.tasks.db_tasks.disable_inactive_users_task',
+        'schedule': 3600.0, # every hour
     },
 }

@@ -28,7 +28,9 @@
     <h2>Available users</h2>
         {% if users %}
             {% for item in users %}
-                <a href="/some_route/{{item.login}}">{{item.login}}</a><br>
+                {%if item.login!= user.login %}
+                    <a href="/some_route/{{item.login}}">{{item.login}}</a><br>
+                {% endif %}
             {% endfor %}
         {% endif %}
 </div>
