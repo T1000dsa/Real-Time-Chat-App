@@ -185,3 +185,8 @@ class AuthProvider(AuthRepository):
     #@exception_handler
     async def password_change(self, user:UserModel, new_pass:str, email:str):
         await self._repo.change_password_email(self.session, user, new_pass, email)
+
+    @time_checker
+    async def get_all_active_users(self):
+        return await self._repo.give_all_active_users_repo(self.session)
+    

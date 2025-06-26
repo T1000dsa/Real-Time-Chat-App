@@ -8,9 +8,10 @@ import json
 
 from src.core.services.chat.chat_manager import manager
 from src.core.config.config import templates
-from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER
+from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create_auth_provider
 from src.utils.prepared_response import prepare_template 
 from src.core.services.database.models.chat import MessageModel
+from src.core.dependencies.db_injection import db_helper
 
 
 router = APIRouter()
@@ -19,26 +20,33 @@ logger = logging.getLogger(__name__)
 @router.get('/rooms')
 async def rooms_connection(
     request: Request,
+    user:GET_CURRENT_ACTIVE_USER,
 ):
-    rooms = await manager.get_private_rooms()
-    prepared_data = {
-        "title": f"Rooms page"
-    }
+    async with db_helper.async_session() as db_session:
+        auth = create_auth_provider(db_session)
+        active_users = await auth.get_all_active_users()
+        rooms = await manager.get_private_rooms()
 
-    add_date = {
-        'other_rooms':rooms
-    }
+        prepared_data = {
+            "title": f"Rooms page"
+        }
 
-    
-    template_response_body_data = await prepare_template(
-        data=prepared_data,
-        additional_data=add_date
-    )
-    
-    return templates.TemplateResponse(
-        request=request,
-        name='rooms.html',
-        context=template_response_body_data
+        add_date = {
+            'other_rooms':rooms,
+            'users':active_users,
+            'user':user
+        }
+
+        
+        template_response_body_data = await prepare_template(
+            data=prepared_data,
+            additional_data=add_date
+        )
+        
+        return templates.TemplateResponse(
+            request=request,
+            name='rooms.html',
+            context=template_response_body_data
     )
 
 @router.get('/chat/{room_type}/{room_id}')

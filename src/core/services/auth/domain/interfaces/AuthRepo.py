@@ -31,3 +31,6 @@ class AuthRepository(ABC):  # Handles ONLY authentication
 
     @abstractmethod
     async def password_change(self, user:UserModel, new_pass:str, email:str): ...
+    
+    @abstractmethod
+    async def get_all_active_users(self): ...

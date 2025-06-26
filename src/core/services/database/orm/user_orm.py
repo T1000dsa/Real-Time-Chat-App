@@ -188,3 +188,14 @@ async def update_password_by_email(session:AsyncSession, user:UserModel, new_pas
         logger.error(err)
         await session.rollback()
         raise err
+    
+@time_checker  
+async def give_all_active_users(session:AsyncSession):
+    try:
+        query = select(UserModel).where(UserModel.is_active == True)
+        res = await session.execute(query)
+        return res.scalars().all()
+
+    except Exception as err:
+        logger.error(err)
+        raise err

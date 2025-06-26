@@ -15,7 +15,8 @@ from src.core.services.database.orm.user_orm import (
     update_data_user,
     user_activate,
     update_profile_file, 
-    update_password_by_email
+    update_password_by_email,
+    give_all_active_users
     )
 from src.utils.time_check import time_checker
 
@@ -44,7 +45,7 @@ class UserService(UserRepository):
         return user
     
     @time_checker
-    async def delete_user(self, session:AsyncSession, user_id:int):
+    async def delete_user(self, session:AsyncSession, user_id:int) -> None:
         await delete_data_user(session, user_id)
 
     @time_checker
@@ -56,10 +57,14 @@ class UserService(UserRepository):
         await user_activate(session, user_id, False)
         
     @time_checker
-    async def update_profile(self, session:AsyncSession, user_id:int, data:dict):
+    async def update_profile(self, session:AsyncSession, user_id:int, data:dict) -> None:
         user = await select_data_user_id(session, user_id)
         await update_profile_file(session, user, data)
 
     @time_checker
     async def change_password_email(self, session:AsyncSession, user:UserModel, new_pass:str, email:str) -> None:
         await update_password_by_email(session, user, new_pass, self._hash, email)
+
+    @time_checker
+    async def give_all_active_users_repo(self, session:AsyncSession) -> Optional[list[UserModel]]:
+        return await give_all_active_users(session)
