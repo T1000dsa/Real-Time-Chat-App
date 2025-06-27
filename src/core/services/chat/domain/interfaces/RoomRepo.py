@@ -12,3 +12,6 @@ class RoomRepository(ABC):
 
     @abstractmethod
     async def get_available_rooms(self) -> Dict[str, List[Dict]]: ...
+    
+    @abstractmethod
+    async def get_private_rooms(self) -> List[Dict]: ...

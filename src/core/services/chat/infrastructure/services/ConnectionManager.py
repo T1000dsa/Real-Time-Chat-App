@@ -5,6 +5,7 @@ import logging
 
 from src.core.services.chat.domain.interfaces.ChatRepo import ConnectionRepository
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,9 +28,17 @@ class ConnectionManager(ConnectionRepository):
     async def join_room(self, user_id: str, room_id: str):
         self.user_rooms[user_id].add(room_id)
 
-    async def leave_room(self, user_id: str, room_id: str):
-        if user_id in self.user_rooms and room_id in self.user_rooms[user_id]:
-            self.user_rooms[user_id].remove(room_id)
+    async def leave_room(self, user_id: str, room_type: str, room_id: str):
+        if room_type in self.user_rooms and room_id in self.user_rooms[room_type]:
+            self.user_rooms[room_type][room_id]['clients'].discard(user_id)
+            
+            # Clean up empty rooms
+            if not self.user_rooms[room_type][room_id]['clients']:
+                del self.user_rooms[room_type][room_id]
+                
+        # Update user's room tracking
+        if user_id in self.user_rooms:
+            self.user_rooms[user_id].discard((room_type, room_id))
 
     async def send_personal_message(self, message: str, client_id: str):
         if client_id in self.active_connections:

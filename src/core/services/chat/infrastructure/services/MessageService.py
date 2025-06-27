@@ -8,11 +8,15 @@ from src.core.dependencies.auth_injection import create_auth_provider
 from src.core.dependencies.db_injection import db_helper
 from src.core.services.database.models.chat import MessageModel
 from src.core.services.chat.domain.interfaces.MessageRepo import MessageRepository
+from src.core.services.chat.infrastructure.services.ConnectionManager import ConnectionManager
+from src.core.services.chat.infrastructure.services.RoomService import RoomService
+
+
 
 logger = logging.getLogger(__name__)
 
 class MessageService(MessageRepository):
-    def __init__(self, connection_manager):
+    def __init__(self, connection_manager:ConnectionManager):
         self.connection_manager = connection_manager
         self.message_history = defaultdict(list)  # room_id: list[messages]
 
@@ -26,35 +30,58 @@ class MessageService(MessageRepository):
                     auth = create_auth_provider(db_session)
                     user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(sender_id))
                     formatted_message = f'{user_data.login}: {message_dict.get("content")}'
-                    await self._save_message(formatted_message, room_id, sender_id)
+                    await self.save_message(formatted_message, room_id, sender_id)
                     
                     # Broadcast to room
-                    await self._broadcast_to_room(message, room_id, sender_id)
+                    await self.broadcast_to_room(message, room_id, sender_id)
                     
         except Exception as e:
             logger.error(f"Failed to process message: {str(e)}")
 
-    async def _save_message(self, message: str, room_id: str, sender_id: str):
+    async def save_message(self, message: str, room_id: str, sender_id: str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
             await auth._db.save_message_db(auth.session, message, room_id, sender_id)
 
-    async def _broadcast_to_room(self, message: str, room_id: str, sender_id: str):
-        # Get all users in the room
-        users_in_room = [
-            user_id for user_id, rooms in self.connection_manager.user_rooms.items() 
-            if room_id in rooms
-        ]
-        
-        # Send to all except sender
-        for user_id in users_in_room:
-            if user_id != sender_id:
-                await self.connection_manager.send_personal_message(message, user_id)
+    async def broadcast_to_room(self, room_service:RoomService, message: str, room_type:str, room_id: str, sender_id: str):
+        if room_type in room_service.rooms and room_id in room_service.rooms[room_type]:
+            room = room_service.rooms[room_type][room_id]
+            disconnected_clients = []
+            
+            # Only save user messages, not system messages
+            try:
+                message_dict = json.loads(message)
+                logger.debug(message_dict)
+                if message_dict.get('type') == 'message':  # Only save actual user messages
+                    async with db_helper.async_session() as db_session:
+                        auth = create_auth_provider(db_session)
+                        user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(sender_id))
+                        await self.save_message(
+                            f'{user_data.login}: {message_dict.get("content")}', 
+                            room_type,
+                            room_id, 
+                            sender_id
+                        )
+            except Exception as e:
+                logger.error(f"Failed to save message: {str(e)}")
+            
+            # Broadcast to all clients except sender
+            for user_id in list(room['clients']):
+                if user_id != sender_id:
+                    try:
+                        await self.connection_manager.send_personal_message(message, user_id)
+                    except:
+                        disconnected_clients.append(user_id)
+            
+            # Clean up disconnected clients
+            for user_id in disconnected_clients:
+                await self.connection_manager.leave_room(user_id, room_type, room_id)
+                self.connection_manager.disconnect(user_id)
 
     async def load_history(self, room_id: str, client_id: str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
-            messages = await auth._db.receive_messages(auth.session, room_id)
+            messages:list[MessageModel] = await auth._db.receive_messages(auth.session, room_id)
             
             unique_messages = set()
             for msg in messages:

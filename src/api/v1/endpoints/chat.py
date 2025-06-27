@@ -6,12 +6,13 @@ import logging
 import uuid
 import json
 
-from src.core.services.chat.chat_manager import manager
 from src.core.config.config import templates
-from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create_auth_provider
 from src.utils.prepared_response import prepare_template 
-from src.core.services.database.models.chat import MessageModel
+
 from src.core.dependencies.db_injection import db_helper
+from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create_auth_provider
+from src.core.dependencies.chat_injection import ChantManagerDI, get_chat_manager
+
 
 
 router = APIRouter()
@@ -21,18 +22,19 @@ logger = logging.getLogger(__name__)
 async def rooms_connection(
     request: Request,
     user:GET_CURRENT_ACTIVE_USER,
+    chat_manager:ChantManagerDI
 ):
     async with db_helper.async_session() as db_session:
         auth = create_auth_provider(db_session)
         active_users = await auth.get_all_active_users()
-        rooms = await manager.get_private_rooms()
+        private_rooms = await chat_manager._room_serv.get_private_rooms()
 
         prepared_data = {
             "title": f"Rooms page"
         }
 
         add_date = {
-            'other_rooms':rooms,
+            'other_rooms':private_rooms,
             'users':active_users,
             'user':user
         }
@@ -53,17 +55,17 @@ async def rooms_connection(
 async def general_chats_room(
     request: Request, 
     user: GET_CURRENT_ACTIVE_USER, 
+    chat_manager:ChantManagerDI,
     room_type:str, 
     room_id: str
 ):
     logger.debug(f"{room_type=} {room_id=}")
-    #logger.debug(manager.rooms)
     # Validate room exists
-    if room_type not in manager.rooms or room_id not in manager.rooms[room_type]:
+    if room_type not in chat_manager._room_serv.rooms or room_id not in chat_manager._room_serv.rooms[room_type]:
         if room_type == 'private':
             return RedirectResponse(url="/rooms", status_code=303)
         # For general rooms, create automatically
-        manager.rooms[room_type][room_id] = {
+        chat_manager._room_serv.rooms[room_type][room_id] = {
             'name': f"{room_type} {room_id}",
             'password': None,
             'clients': set()
@@ -80,6 +82,7 @@ async def general_chats_room(
         data=prepared_data,
         additional_data=add_data
     )
+    logger.debug('general_chats_room success!')
     return templates.TemplateResponse(
         request=request,
         name='chat.html',
@@ -95,29 +98,31 @@ async def chat_endpoint(
     user_login: str = Query(...),
     password: str = Query(None),
 ):
+    logger.debug('In websocket')
+    chat_manger = get_chat_manager()
+
     if password is None:
-        password = manager.protected_cons.get(f'room_password_{room_id}', None)
+        password = chat_manger._room_serv.protected_cons.get(f'room_password_{room_id}', None)
 
 
-    logger.debug(f"Current rooms structure: {manager.rooms}")
     
     # Initialize room if it doesn't exist
-    if room_type not in manager.rooms or room_id not in manager.rooms[room_type]:
+    if room_type not in chat_manger._room_serv.rooms or room_id not in chat_manger._room_serv.rooms[room_type]:
         if room_type == 'private':
             await websocket.close(code=404, reason="Room does not exist")
             return
         # For general rooms, create automatically
-        manager.rooms[room_type][room_id] = {
+        chat_manger._room_serv.rooms[room_type][room_id] = {
             'name': f"{room_type} {room_id}",
             'password': None,
             'clients': set()
         }
-    await manager.connect(websocket, user_id)
+    await chat_manger._msg_repo.connection_manager.connect(websocket, user_id)
     logger.info(f'User {user_login} connected to: {room_type}/{room_id}')
     
     try:
         # Validate room access with password if needed
-        if not await manager.join_room(
+        if not await chat_manger._msg_repo.connection_manager.join_room(
             user_id=user_id,
             room_type=room_type,
             room_id=room_id,
@@ -127,22 +132,13 @@ async def chat_endpoint(
             return
         
 
-        result:list[MessageModel] =  await manager.receive_messages(
+        await chat_manger._msg_repo.load_history(
             room_id,
             user_id
         )
         
-        await manager.preload_messages(
-            result,
-            user_id,
-            room_type,
-            room_id,
-            user_login
-            
-        )
-        
         # Send join notification
-        await manager.broadcast_to_room(
+        await chat_manger._msg_repo.broadcast_to_room(
         json.dumps({
             "id": str(uuid.uuid4()),
             "type": "system",
@@ -150,6 +146,7 @@ async def chat_endpoint(
             "content": f"{user_login} joined the chat",
             "timestamp": datetime.now().isoformat()
         }),
+        chat_manger._room_serv,
         room_type,
         room_id,
         user_id
@@ -175,7 +172,8 @@ async def chat_endpoint(
                     "timestamp": datetime.now().isoformat()
                 }
                 
-                await manager.broadcast_to_room(
+                await chat_manger._msg_repo.broadcast_to_room(
+                    chat_manger._room_serv,
                     json.dumps(message),
                     room_type,
                     room_id,
@@ -193,9 +191,9 @@ async def chat_endpoint(
     except WebSocketDisconnect as e:
         logger.info(f"User {user_login} disconnected: {str(e)}")
     finally:
-        await manager.leave_room(user_id, room_type, room_id)
+        await chat_manger._msg_repo.connection_manager.leave_room(user_id, room_type, room_id)
         # Send SINGLE leave notification with unique ID
-        await manager.broadcast_to_room(
+        await chat_manger._msg_repo.broadcast_to_room(
         json.dumps({
             "id": str(uuid.uuid4()),
             "type": "system",
@@ -212,16 +210,17 @@ async def chat_endpoint(
 async def create_protected_room(
     request: Request,
     user: GET_CURRENT_ACTIVE_USER,
+    chat_manager:ChantManagerDI,
     name: str = Form(...),
     password: Optional[str] = Form(None),
     room_type: str = Form('private')  # Default to private
 ):
     logger.debug(f'{name=} {password=}')
     # Create the room and get its ID
-    room_id = await manager.create_protected_room(name, password)
+    room_id = await chat_manager._room_serv.create_room(room_type, name, password)
     
     # Join the creator to the room
-    success = await manager.join_room(
+    success = await chat_manager._msg_repo.connection_manager.join_room(
         user_id=str(user.id),
         room_type=room_type,
         room_id=room_id,
@@ -233,8 +232,8 @@ async def create_protected_room(
         status_code=303
     )
 
-    manager.protected_cons[f'room_password_{room_id}'] = password
-    manager.protected_cons[f'room_id'] = room_id
+    chat_manager._room_serv.protected_cons[f'room_password_{room_id}'] = password
+    chat_manager._room_serv.protected_cons[f'room_id'] = room_id
     
     if not success:
         # Handle join failure

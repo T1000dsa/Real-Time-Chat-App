@@ -10,6 +10,7 @@ class RoomService(RoomRepository):
     def __init__(self):
         self.rooms: Dict[str, Dict] = {}  # room_id: room_data
         self.private_rooms: Dict[str, Dict] = {}  # room_id: {name, password, clients}
+        self.protected_cons:dict = {}
 
     async def create_room(self, room_type: str, name: str, password: Optional[str] = None) -> str:
         room_id = str(uuid.uuid4())
@@ -42,3 +43,15 @@ class RoomService(RoomRepository):
                 'has_password': v['password'] is not None
             } for k, v in self.private_rooms.items()]
         }
+    
+    async def get_private_rooms(self) -> List[Dict]:
+        """Get list of private rooms with their metadata"""
+        return [
+            {
+                'id': room_id,
+                'name': data['name'],
+                'has_password': data['password'] is not None,
+                'user_count': len(data['clients'])
+            }
+            for room_id, data in self.rooms.get('private', {}).items()
+        ]
