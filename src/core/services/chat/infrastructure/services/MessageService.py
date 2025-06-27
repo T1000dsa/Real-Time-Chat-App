@@ -38,10 +38,11 @@ class MessageService(MessageRepository):
         except Exception as e:
             logger.error(f"Failed to process message: {str(e)}")
 
-    async def save_message(self, message: str, room_id: str, sender_id: str):
+    async def save_message(self, message: str, room_type:str, room_id: str, sender_id: str):
+        logger.debug('Trying to save message...')
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
-            await auth._db.save_message_db(auth.session, message, room_id, sender_id)
+            await auth._db.save_message_db(auth.session, message, room_type, room_id, sender_id)
 
     async def broadcast_to_room(self, room_service:RoomService, message: str, room_type:str, room_id: str, sender_id: str):
         if room_type in room_service.rooms and room_id in room_service.rooms[room_type]:
@@ -51,7 +52,7 @@ class MessageService(MessageRepository):
             # Only save user messages, not system messages
             try:
                 message_dict = json.loads(message)
-                logger.debug(message_dict)
+                logger.debug(message_dict) 
                 if message_dict.get('type') == 'message':  # Only save actual user messages
                     async with db_helper.async_session() as db_session:
                         auth = create_auth_provider(db_session)
@@ -78,25 +79,26 @@ class MessageService(MessageRepository):
                 await self.connection_manager.leave_room(user_id, room_type, room_id)
                 self.connection_manager.disconnect(user_id)
 
-    async def load_history(self, room_id: str, client_id: str):
+    async def load_history(self, room_id: str, client_id: str, room_type:str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
-            messages:list[MessageModel] = await auth._db.receive_messages(auth.session, room_id)
+            messages:list[MessageModel] = await auth._db.receive_messages(auth.session, room_id, client_id)
             
             unique_messages = set()
             for msg in messages:
                 if msg.message not in unique_messages:
                     unique_messages.add(msg.message)
                     try:
-                        user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(msg.user_id))
-                        message_data = json.dumps({
-                            "id": str(msg.id),
-                            "type": "historical",
-                            "sender_id": msg.user_id,
-                            "sender": user_data.login,
-                            "content": msg.message,
-                            "timestamp": msg.created_at.isoformat()
-                        })
-                        await self.connection_manager.send_personal_message(message_data, client_id)
+                        if room_id == msg.room_id and room_type == msg.room_type:
+                            user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(msg.user_id))
+                            message_data = json.dumps({
+                                "id": str(msg.id),
+                                "type": "historical",
+                                "sender_id": msg.user_id,
+                                "sender": user_data.login,
+                                "content": msg.message,
+                                "timestamp": msg.created_at.isoformat()
+                            })
+                            await self.connection_manager.send_personal_message(message_data, client_id)
                     except Exception as e:
                         logger.error(f"Error sending historical message: {str(e)}")

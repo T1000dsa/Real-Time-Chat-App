@@ -25,7 +25,7 @@ celery.conf.update(
 celery.conf.beat_schedule = {
     'healthcheck-every-10-seconds': {
         'task': 'src.core.services.tasks.task_health.healthcheck',
-        'schedule': 10.0,
+        'schedule': 60.0,
     },
 
     'db_disable_users': {

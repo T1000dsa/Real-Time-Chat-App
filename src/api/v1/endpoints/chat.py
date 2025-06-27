@@ -11,7 +11,7 @@ from src.utils.prepared_response import prepare_template
 
 from src.core.dependencies.db_injection import db_helper
 from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create_auth_provider
-from src.core.dependencies.chat_injection import ChantManagerDI, get_chat_manager
+from src.core.dependencies.chat_injection import ChantManagerDI, get_chat_manager_manual
 
 
 
@@ -65,11 +65,15 @@ async def general_chats_room(
         if room_type == 'private':
             return RedirectResponse(url="/rooms", status_code=303)
         # For general rooms, create automatically
-        chat_manager._room_serv.rooms[room_type][room_id] = {
+    chat_manager._room_serv.rooms[room_type][room_id] = {
             'name': f"{room_type} {room_id}",
             'password': None,
             'clients': set()
         }
+    
+    logger.debug(chat_manager._room_serv.rooms[room_type][room_id])
+
+    logger.debug(f"{room_type=} {room_id=}")
 
     prepared_data = {
         "title": f"{room_type.title()} chat"
@@ -99,30 +103,41 @@ async def chat_endpoint(
     password: str = Query(None),
 ):
     logger.debug('In websocket')
-    chat_manger = get_chat_manager()
+    chat_manager = get_chat_manager_manual()
 
     if password is None:
-        password = chat_manger._room_serv.protected_cons.get(f'room_password_{room_id}', None)
+        password = chat_manager._room_serv.protected_cons.get(f'room_password_{room_id}', None)
 
 
-    
     # Initialize room if it doesn't exist
-    if room_type not in chat_manger._room_serv.rooms or room_id not in chat_manger._room_serv.rooms[room_type]:
+    if room_type not in chat_manager._room_serv.rooms or room_id not in chat_manager._room_serv.rooms[room_type]:
         if room_type == 'private':
             await websocket.close(code=404, reason="Room does not exist")
             return
         # For general rooms, create automatically
-        chat_manger._room_serv.rooms[room_type][room_id] = {
+    chat_manager._room_serv.rooms[room_type][room_id] = {
             'name': f"{room_type} {room_id}",
             'password': None,
             'clients': set()
         }
-    await chat_manger._msg_repo.connection_manager.connect(websocket, user_id)
+    
+     # Also initialize in ConnectionManager's user_rooms
+    if room_type not in chat_manager._msg_repo.connection_manager.user_rooms:
+        chat_manager._msg_repo.connection_manager.user_rooms[room_type] = {}
+        chat_manager._msg_repo.connection_manager.user_rooms[room_type][room_id] = {
+            'name': f"{room_type} {room_id}",
+            'password': None,
+            'clients': set()
+        }
+    
+    logger.debug(chat_manager._room_serv.rooms[room_type][room_id])
+    
+    await chat_manager._msg_repo.connection_manager.connect(websocket, user_id)
     logger.info(f'User {user_login} connected to: {room_type}/{room_id}')
     
     try:
         # Validate room access with password if needed
-        if not await chat_manger._msg_repo.connection_manager.join_room(
+        if not await chat_manager._msg_repo.connection_manager.join_room(
             user_id=user_id,
             room_type=room_type,
             room_id=room_id,
@@ -132,13 +147,15 @@ async def chat_endpoint(
             return
         
 
-        await chat_manger._msg_repo.load_history(
+        await chat_manager._msg_repo.load_history(
             room_id,
-            user_id
+            user_id,
+            room_type
         )
         
         # Send join notification
-        await chat_manger._msg_repo.broadcast_to_room(
+        await chat_manager._msg_repo.broadcast_to_room(
+        chat_manager._room_serv,
         json.dumps({
             "id": str(uuid.uuid4()),
             "type": "system",
@@ -146,7 +163,6 @@ async def chat_endpoint(
             "content": f"{user_login} joined the chat",
             "timestamp": datetime.now().isoformat()
         }),
-        chat_manger._room_serv,
         room_type,
         room_id,
         user_id
@@ -172,8 +188,8 @@ async def chat_endpoint(
                     "timestamp": datetime.now().isoformat()
                 }
                 
-                await chat_manger._msg_repo.broadcast_to_room(
-                    chat_manger._room_serv,
+                await chat_manager._msg_repo.broadcast_to_room(
+                    chat_manager._room_serv,
                     json.dumps(message),
                     room_type,
                     room_id,
@@ -191,9 +207,10 @@ async def chat_endpoint(
     except WebSocketDisconnect as e:
         logger.info(f"User {user_login} disconnected: {str(e)}")
     finally:
-        await chat_manger._msg_repo.connection_manager.leave_room(user_id, room_type, room_id)
+        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_id)
         # Send SINGLE leave notification with unique ID
-        await chat_manger._msg_repo.broadcast_to_room(
+        await chat_manager._msg_repo.broadcast_to_room(
+            chat_manager._room_serv,
         json.dumps({
             "id": str(uuid.uuid4()),
             "type": "system",

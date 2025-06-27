@@ -1,4 +1,5 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Set
+from collections import defaultdict
 import uuid
 import logging
 
@@ -8,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class RoomService(RoomRepository):
     def __init__(self):
-        self.rooms: Dict[str, Dict] = {}  # room_id: room_data
+        self.rooms: Dict[str, Dict[str, Dict[str, Optional[str], Set]]] = defaultdict(dict)
         self.private_rooms: Dict[str, Dict] = {}  # room_id: {name, password, clients}
         self.protected_cons:dict = {}
 

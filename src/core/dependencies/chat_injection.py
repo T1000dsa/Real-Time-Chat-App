@@ -27,5 +27,10 @@ def get_chat_manager(
         ) -> ChatManager:
     return ChatManager(message_repo=message_service, room_service=room_service)
 
+def get_chat_manager_manual():
+    conn_manager = ConnectionManager()
+    message_service = MessageService(connection_manager=conn_manager)
+    room_service = RoomService()
+    return ChatManager(message_repo=message_service, room_service=room_service)
 
 ChantManagerDI = Annotated[ChatManager, Depends(get_chat_manager)]

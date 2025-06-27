@@ -25,9 +25,29 @@ class ConnectionManager(ConnectionRepository):
         if client_id in self.user_rooms:
             del self.user_rooms[client_id]
 
-    async def join_room(self, user_id: str, room_id: str):
-        self.user_rooms[user_id].add(room_id)
-
+    async def join_room(self, user_id: str, room_type: str, room_id: str, password: Optional[str] = None) -> bool:
+        logger.debug(f"Attempting to join {user_id} to {room_type}/{room_id}")
+        logger.debug(self.user_rooms)
+        if room_type not in self.user_rooms:
+            logger.debug(f"Room type {room_type} not found")
+            return False
+        
+        if room_id not in self.user_rooms[room_type]:
+            logger.debug(f"Room {room_id} not found in {room_type}")
+            return False
+            
+        room = self.user_rooms[room_type][room_id]
+        
+        # Password check for private rooms
+        if room_type == 'private' and room.get('password') and room['password'] != password:
+            logger.debug("Password mismatch for private room")
+            return False
+            
+        room['clients'].add(user_id)
+        self.user_rooms[user_id].add((room_type, room_id))
+        logger.debug(f"User {user_id} joined {room_type}/{room_id}. Current clients: {room['clients']}")
+        return True
+    
     async def leave_room(self, user_id: str, room_type: str, room_id: str):
         if room_type in self.user_rooms and room_id in self.user_rooms[room_type]:
             self.user_rooms[room_type][room_id]['clients'].discard(user_id)
