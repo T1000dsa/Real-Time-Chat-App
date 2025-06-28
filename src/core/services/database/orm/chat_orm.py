@@ -4,12 +4,15 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy import select, update, delete, join
 import logging
 
+
 from src.core.services.database.models.chat import MessageModel
 from src.core.schemas.message_shema import MessageSchema, MessabeSchemaBase
+from src.utils.time_check import time_checker
 
 
 logger = logging.getLogger(__name__)
 
+@time_checker
 async def select_messages(
     session: AsyncSession,
     message_data:MessabeSchemaBase
@@ -18,6 +21,7 @@ async def select_messages(
     res = (await session.execute(query)).scalars().all()[-20:]
     return res
 
+@time_checker
 async def save_message(
     session: AsyncSession,
     message_data:MessageSchema

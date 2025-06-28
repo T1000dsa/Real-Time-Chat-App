@@ -23,7 +23,7 @@ celery.conf.update(
 
 # Periodic Tasks
 celery.conf.beat_schedule = {
-    'healthcheck-every-10-seconds': {
+    'healthcheck-every-60-seconds': {
         'task': 'src.core.services.tasks.task_health.healthcheck',
         'schedule': 60.0,
     },

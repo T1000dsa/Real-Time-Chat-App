@@ -10,6 +10,7 @@ from src.core.services.database.models.chat import MessageModel
 from src.core.services.chat.domain.interfaces.MessageRepo import MessageRepository
 from src.core.services.chat.infrastructure.services.ConnectionManager import ConnectionManager
 from src.core.services.chat.infrastructure.services.RoomService import RoomService
+from src.utils.time_check import time_checker
 
 
 
@@ -20,6 +21,7 @@ class MessageService(MessageRepository):
         self.connection_manager = connection_manager
         self.message_history = defaultdict(list)  # room_id: list[messages]
 
+    @time_checker
     async def process_message(self, message: str, room_id: str, sender_id: str):
         try:
             message_dict = json.loads(message)
@@ -38,12 +40,13 @@ class MessageService(MessageRepository):
         except Exception as e:
             logger.error(f"Failed to process message: {str(e)}")
 
+    @time_checker
     async def save_message(self, message: str, room_type:str, room_id: str, sender_id: str):
         logger.debug('Trying to save message...')
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)
             await auth._db.save_message_db(auth.session, message, room_type, room_id, sender_id)
-
+    @time_checker
     async def broadcast_to_room(self, room_service:RoomService, message: str, room_type:str, room_id: str, sender_id: str):
         if room_type in room_service.rooms and room_id in room_service.rooms[room_type]:
             room = room_service.rooms[room_type][room_id]
@@ -78,7 +81,7 @@ class MessageService(MessageRepository):
             for user_id in disconnected_clients:
                 await self.connection_manager.leave_room(user_id, room_type, room_id)
                 self.connection_manager.disconnect(user_id)
-
+    @time_checker
     async def load_history(self, room_id: str, client_id: str, room_type:str):
         async with db_helper.async_session() as db_session:
             auth = create_auth_provider(db_session)

@@ -10,6 +10,7 @@ from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
 from src.core.schemas.auth_schema import RefreshToken
 from src.core.services.auth.domain.models.user import UserModel
 
+
 logger = logging.getLogger(__name__)
 
 @time_checker
@@ -31,6 +32,7 @@ async def select_data_token(
             detail="Database error"
         )
     
+@time_checker
 async def new_token_insert(
     session: AsyncSession,
     token_scheme:RefreshToken
