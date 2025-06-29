@@ -7,7 +7,6 @@ from src.core.config.config import main_prefix
 from src.core.dependencies.auth_injection import (
     AuthDependency,
     GET_CURRENT_ACTIVE_USER,
-    get_current_active_user, 
     GET_CURRENT_USER_FOR_EMAIL
     )
 from src.api.v1.utils.render_pass_flow import (

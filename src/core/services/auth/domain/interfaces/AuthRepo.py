@@ -34,3 +34,6 @@ class AuthRepository(ABC):  # Handles ONLY authentication
     
     @abstractmethod
     async def get_all_active_users(self): ...
+
+    @abstractmethod
+    async def is_active(self, request:Request): ...

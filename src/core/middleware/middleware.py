@@ -26,6 +26,9 @@ def init_token_refresh_middleware(app: FastAPI):
 
             async with db_helper.async_session() as db_session:
                 auth = create_auth_provider(db_session)
+
+                if not await auth.is_active(request):
+                    await auth.logout(request)
                 
                 # Only attempt rotation if both tokens are present
                 if all(k in request.cookies for k in [auth._token.ACCESS_TYPE, auth._token.REFRESH_TYPE]):

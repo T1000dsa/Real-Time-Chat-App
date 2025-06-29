@@ -190,3 +190,8 @@ class AuthProvider(AuthRepository):
     async def get_all_active_users(self):
         return await self._repo.give_all_active_users_repo(self.session)
     
+    @time_checker
+    async def is_active(self, request:Request):
+        user_data = await self.gather_user_data(request)
+        return user_data.is_active
+    

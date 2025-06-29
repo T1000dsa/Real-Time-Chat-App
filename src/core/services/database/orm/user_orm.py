@@ -115,8 +115,8 @@ async def user_activate(session:AsyncSession, user_id:int, activate:bool):
     if user is None:
         raise ValueError(f"User with id {user_id} not found")
     
-    if user.is_active == activate:
-        raise false_activation_user_exception
+    #if user.is_active == activate:
+        #raise false_activation_user_exception
     
     user.is_active = activate
     

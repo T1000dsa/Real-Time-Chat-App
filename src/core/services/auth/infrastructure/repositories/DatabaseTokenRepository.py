@@ -109,7 +109,7 @@ class DatabaseTokenRepository(TokenRepository):
             
             except Exception as err:
                 logger.critical(err)
-                return None
+                raise err
 
             # Then check access token
             access_token = request.cookies.get(jwt_service.ACCESS_TYPE)
