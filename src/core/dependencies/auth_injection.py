@@ -9,6 +9,7 @@ from src.core.services.auth.infrastructure.services.AuthProvider import AuthProv
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
 from src.core.services.auth.infrastructure.services.EmailService import EmailService
+from src.core.services.auth.infrastructure.services.UserService import UserServiceAuth
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.exceptions.auth_exception import auth_demand_exception, inactive_user_exception
 
@@ -45,6 +46,13 @@ def get_user_repo(
         hash_service=hash_service
         )
 
+def get_user_service(
+        user_repo = Depends(get_user_repo),
+        token_service = Depends(get_token_service)
+) -> UserServiceAuth:
+    user_service = UserServiceAuth(user_repo=user_repo, token_service=token_service)
+    return user_service
+
 # Main provider
 def get_auth_provider(
         session:DBDI, 
@@ -52,7 +60,8 @@ def get_auth_provider(
         hash_service = Depends(get_hash_service),
         token_service = Depends(get_token_service),
         db_repo = Depends(get_token_repo),
-        emaiL_service = Depends(get_email_service)
+        emaiL_service = Depends(get_email_service),
+        user_service = Depends(get_user_service)
         ) -> AuthProvider:
     return AuthProvider(
         session=session,
@@ -60,7 +69,8 @@ def get_auth_provider(
         hash_service=hash_service, 
         token_service=token_service,
         db_repo=db_repo,
-        email_service=emaiL_service
+        email_service=emaiL_service,
+        user_service=user_service
         )
 
 # Current user dependency
@@ -74,7 +84,7 @@ async def get_current_user(
         raise auth_demand_exception
     
     try:
-        user = await auth_service.gather_user_data(request=request)
+        user = await auth_service._user.gather_user_data(request=request, session=auth_service.session)
 
         if user is None:
             logger.info('Someone tried to reach endpoint')
@@ -102,6 +112,7 @@ def create_auth_provider(db_session):
     token_repo = DatabaseTokenRepository()
     user_service = UserService(hash_service=hash_service)
     email_service = EmailService()
+    user_service_auth = UserServiceAuth(user_repo=user_service, token_service=token_service)
 
     return AuthProvider(
         session=db_session,
@@ -109,7 +120,8 @@ def create_auth_provider(db_session):
         hash_service=hash_service,
         token_service=token_service,
         db_repo=token_repo,
-        email_service=email_service
+        email_service=email_service,
+        user_service=user_service_auth
     )
 
 
@@ -124,7 +136,7 @@ async def get_current_user_for_email(
         return None
     
     try:
-        user = await auth_service.gather_user_data(request=request)
+        user = await auth_service._user.gather_user_data(request=request, session=auth_service.session)
 
         if user is None:
             logger.info('Someone tried to reach endpoint')

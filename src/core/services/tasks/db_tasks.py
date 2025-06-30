@@ -1,7 +1,7 @@
 import logging
 import asyncio
 
-from src.core.dependencies.db_injection import AsyncSession, db_helper
+from src.core.dependencies.db_injection import db_helper
 from src.core.services.tasks.celery import celery
 from src.core.services.database.orm.celery_orm import disable_users
 

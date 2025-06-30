@@ -14,6 +14,7 @@ from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcrypt
 from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
 from src.core.services.auth.infrastructure.services.EmailService import EmailService
+from src.core.services.auth.infrastructure.services.UserService import UserServiceAuth
 from src.core.services.auth.infrastructure.repositories.DatabaseTokenRepository import DatabaseTokenRepository
 from src.core.exceptions.auth_exception import credentials_exception, AuthException
 from src.core.exceptions.except_catcher import exception_handler
@@ -32,6 +33,7 @@ class AuthProvider(AuthRepository):
             token_service:JWTService, 
             db_repo:DatabaseTokenRepository,
             email_service:EmailService,
+            user_service:UserServiceAuth
             ):
         
         self.session = session
@@ -40,6 +42,7 @@ class AuthProvider(AuthRepository):
         self._token = token_service
         self._db = db_repo
         self._email = email_service
+        self._user = user_service
 
     @time_checker
     #@exception_handler
@@ -108,22 +111,6 @@ class AuthProvider(AuthRepository):
     async def register_user(self, user_data:UserSchema) -> None:
         await self._repo.create_user(self.session, user_data)
 
-    @time_checker
-    #@exception_handler
-    async def gather_user_data(self, request:Request) -> UserModel:
-        try:
-            verified_token = await self._token.verify_token(request, self._token.ACCESS_TYPE)
-            sub = int(verified_token.get('sub'))
-            return await self._repo.get_user_for_auth_by_id(self.session, sub)
-        
-        except ExpiredSignatureError as err:
-            logger.info(f'Handled {err}')
-            verified_token = await self._token.verify_token_unsafe(request, self._token.ACCESS_TYPE)
-            sub = int(verified_token.get('sub'))
-            return await self._repo.get_user_for_auth_by_id(self.session, sub)
-        except Exception as err:
-            logger.critical(err)
-            raise err
         
     @time_checker
     #@exception_handler
@@ -175,23 +162,3 @@ class AuthProvider(AuthRepository):
             logger.error(f"Unexpected error during logout: {str(e)}")
             response = RedirectResponse(url=f'{main_prefix}/login', status_code=302)
             return await self._token.clear_tokens(response)
-        
-    @time_checker
-    #@exception_handler
-    async def update_profile_user(self, user_id:int,data:dict) -> None:
-        await self._repo.update_profile(self.session, user_id, data)
-
-    @time_checker
-    #@exception_handler
-    async def password_change(self, user:UserModel, new_pass:str, email:str):
-        await self._repo.change_password_email(self.session, user, new_pass, email)
-
-    @time_checker
-    async def get_all_active_users(self):
-        return await self._repo.give_all_active_users_repo(self.session)
-    
-    @time_checker
-    async def is_active(self, request:Request):
-        user_data = await self.gather_user_data(request)
-        return user_data.is_active
-    

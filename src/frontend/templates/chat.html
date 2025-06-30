@@ -61,6 +61,7 @@
 
     // Handle incoming messages
     ws.onmessage = (event) => {
+    console.log("Raw message received:", event.data);
     try {
         const data = JSON.parse(event.data);
         
@@ -77,6 +78,8 @@
                 addErrorMessage(data.content);
                 break;
             case 'message':
+                addMessage(data);
+                break;
             case 'historical':
                 addMessage(data);
                 break;

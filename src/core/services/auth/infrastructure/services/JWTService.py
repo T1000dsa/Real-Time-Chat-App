@@ -1,9 +1,8 @@
 from fastapi import Response, Request, HTTPException
 from datetime import timedelta, datetime, timezone
 from jose import jwt
-from sqlalchemy.ext.asyncio import AsyncSession
+from secrets import token_urlsafe
 from jose.exceptions import ExpiredSignatureError
-from typing import Optional
 import logging
 
 from src.core.services.auth.domain.interfaces.TokenService import TokenService
@@ -25,6 +24,10 @@ class JWTService(TokenService):
         self.CSRF_TYPE = 'csrf'
 
     @time_checker
+    async def generate_csrf_token(self) -> str:
+        return token_urlsafe(32)
+
+    @time_checker
     async def create_token(self, data: dict, expires_delta: timedelta, token_type: str) -> str:
         """Base function for all tokens"""
         to_encode = data.copy()
@@ -40,6 +43,8 @@ class JWTService(TokenService):
     
     @time_checker
     async def create_tokens(self, data:dict) -> dict:
+        csrf_token = await self.generate_csrf_token()
+        data.update({self.CSRF_TYPE:csrf_token})
         access_token = await self.create_token(
             data=data, 
             expires_delta=self.ACCESS_TOKEN_EXPIRE, 
@@ -50,10 +55,12 @@ class JWTService(TokenService):
             data=data, 
             expires_delta=self.REFRESH_TOKEN_EXPIRE, 
             token_type=self.REFRESH_TYPE
-            )    
+            ) 
+        
         return {
             self.ACCESS_TYPE:access_token, 
-            self.REFRESH_TYPE:refresh_token
+            self.REFRESH_TYPE:refresh_token,
+            self.CSRF_TYPE:csrf_token
             }
     
     @time_checker

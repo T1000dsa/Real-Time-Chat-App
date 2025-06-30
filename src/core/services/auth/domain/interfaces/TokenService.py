@@ -29,3 +29,6 @@ class TokenService(ABC):
     
     @abstractmethod
     async def verify_websocket_token(self, token: str, token_type: str) -> dict: ...
+
+    @abstractmethod
+    async def generate_csrf_token(self) -> str: ...

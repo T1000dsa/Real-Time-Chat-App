@@ -20,7 +20,7 @@ async def disable_users(session:AsyncSession):
         if item.is_active:
             res = await get_refresh_token_data(session, item)
             if res:
-                if int((now_data - res.expires_at).seconds/3600) >= 6:
+                if int((now_data - res.expires_at).seconds/3600) >= 24:
                     item.is_active = False
                     res.revoked = True
                     await session.commit()

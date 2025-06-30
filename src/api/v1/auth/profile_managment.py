@@ -49,7 +49,7 @@ async def update_profile(
         # Handle file upload (you'll need to implement this)
         photo_url = await handle_photo_upload(photo, curr_user)
         
-    await auth.update_profile_user(curr_user.id, {'email':email,'photo':photo_url, 'login':login})
+    await auth._user.update_profile_user(curr_user.id, {'email':email,'photo':photo_url, 'login':login})
     return RedirectResponse(f'{main_prefix}/profile', status_code=303)
 
 @time_checker
@@ -136,13 +136,13 @@ async def reset_password(
         try:
             if curr_user:
                 logger.debug(new_password)
-                await auth.password_change(curr_user, new_password, email)
+                await auth._user.password_change(curr_user, new_password, email)
                 logger.debug('Password was changed successfully')
                 return respone
             
             if user:
                 logger.debug(new_password)
-                await auth.password_change(user, new_password, email)
+                await auth._user.password_change(user, new_password, email)
                 logger.debug('Password was changed successfully')
                 return respone
             

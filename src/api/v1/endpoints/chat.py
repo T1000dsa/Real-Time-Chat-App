@@ -14,7 +14,6 @@ from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create
 from src.core.dependencies.chat_injection import ChantManagerDI, get_chat_manager_manual
 
 
-
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ async def rooms_connection(
 ):
     async with db_helper.async_session() as db_session:
         auth = create_auth_provider(db_session)
-        active_users = await auth.get_all_active_users()
+        active_users = await auth._user.get_all_active_users(auth.session)
         private_rooms = await chat_manager._room_serv.get_private_rooms()
 
         prepared_data = {
