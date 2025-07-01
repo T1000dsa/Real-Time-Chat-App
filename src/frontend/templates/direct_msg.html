@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+<title>{{ title }}</title>
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Logged in as: {{ user.login }}</p>
+<div id="status">Disconnected</div>
+<div id="chat"></div>
+<div>
+    <input type="text" id="message" placeholder="Type your message..." autocomplete="off">
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    // Get the correct server URL
+    const serverUrl = "http://localhost:8000";
+    
+    // Extract room info from URL more reliably
+    const pathParts = window.location.pathname.split('/').filter(part => part !== '');
+    const roomType = pathParts[1]; // "general", "private", etc.
+    const roomId = pathParts[2];   // room ID
+    
+    const userId = "{{ user.id }}";
+    const userLogin = "{{ user.login }}";
+    let userPassword = null;
+
+    if (roomType === "private") {
+        // Better password prompt implementation
+        userPassword = prompt('Please enter your password:');
+        while (!userPassword) {
+            userPassword = prompt('Password cannot be empty. Please enter your password:');
+        }
+    }
+    const params = new URLSearchParams();
+    params.append('user_id', userId);
+    params.append('user_login', userLogin);
+    if (userPassword) {
+    params.append('password', userPassword);
+}
+
+    
+    // Connect to specific room
+    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomId}?${params.toString()}`;
+    
+    console.log("Connecting to WebSocket at:", wsUrl);
+
+    const displayedMessageIds = new Set();
+
+    const ws = new WebSocket(wsUrl);
+    const chatDiv = document.getElementById('chat');
+    const statusDiv = document.getElementById('status');
+    const messageInput = document.getElementById('message');
+
+
+    // Handle WebSocket connection opening
+    ws.onopen = (event) => {
+        statusDiv.textContent = `Connected to ${roomType} room: ${roomId}`;
+        statusDiv.style.color = "green";
+        addSystemMessage("Connected to chat room!");
+    };
+
+    // Handle incoming messages
+    ws.onmessage = (event) => {
+    console.log("Raw message received:", event.data);
+    try {
+        const data = JSON.parse(event.data);
+        
+        // Skip duplicates for non-system messages
+        if (data.type !== 'system' && displayedMessageIds.has(data.id)) return;
+        displayedMessageIds.add(data.id);
+        
+        // Handle all message types
+        switch(data.type) {
+            case 'system':
+                addMessage(data);
+                break;
+            case 'error':
+                addErrorMessage(data.content);
+                break;
+            case 'message':
+                addMessage(data);
+                break;
+            case 'historical':
+                addMessage(data);
+                break;
+            default:
+                console.warn('Unknown message type:', data.type);
+                addMessage(data);
+        }
+    } catch (e) {
+        console.error('Error parsing message:', e);
+        addSystemMessage('Received invalid message');
+    }
+};
+
+
+
+    // Handle connection closing
+    ws.onclose = (event) => {
+        statusDiv.textContent = "Disconnected";
+        statusDiv.style.color = "red";
+        addSystemMessage("Disconnected from chat");
+        
+        // Optionally attempt to reconnect
+        setTimeout(() => {
+            addSystemMessage("Attempting to reconnect...");
+            window.location.reload();
+        }, 10000);
+    };
+
+    // Handle errors
+    ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    statusDiv.textContent = "Connection error!";
+    statusDiv.style.color = "darkred";
+    addSystemMessage("Connection error occurred");
+    
+    // Provide more specific error messages
+    if (error.message.includes('4003')) {
+        addSystemMessage("Invalid password for private room");
+    } else if (error.message.includes('4004')) {
+        addSystemMessage("Room does not exist");
+    }
+};
+
+function formatTimestamp(isoString, isHistorical = false) {
+    const date = isoString ? new Date(isoString) : new Date();
+    
+    if (isHistorical) {
+        // For historical messages (UTC+0), apply local timezone offset
+        const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        const timeStr = localTime.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const dateStr = localTime.toLocaleDateString([], {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        return `${dateStr}, ${timeStr}`;
+    } else {
+        // For real-time messages (already local), use as-is
+        const timeStr = date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        const dateStr = date.toLocaleDateString([], {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        return `${dateStr}, ${timeStr}`;
+    }
+}
+
+    // Helper function to add system messages
+    function addSystemMessage(message) {
+    addMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        sender: 'System',
+        content: message,
+        timestamp: new Date().toISOString()
+    });
+}
+    // Helper function to add messages to the chat
+    // Helper function to add messages to the chat
+    let lastSystemMessage = {
+    content: null,
+    timestamp: null
+};
+
+    // Remove the duplicate tracking for system messages
+    function addMessage(data) {
+    const msgElement = document.createElement('div');
+    const timestamp = formatTimestamp(data.timestamp, data.type === 'historical');
+    console.log(timestamp, data.type === 'historical')
+        
+
+    // Handle all message types
+    if (data.type === 'system') {
+        msgElement.className = "system-message";
+        msgElement.innerHTML = `[${timestamp}] ${data.content}`;
+    } 
+    else if (data.type === "historical") {
+        msgElement.className = "historical-message";
+        msgElement.innerHTML = `[${timestamp}] ${data.content}`;
+    }
+    else {
+        msgElement.className = "user-message";
+        msgElement.innerHTML = `[${timestamp}] ${data.sender}: ${data.content}`;
+    }
+    
+    chatDiv.appendChild(msgElement);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+    // Function to send messages
+    function sendMessage() {
+    const message = messageInput.value.trim();
+    if (message && ws.readyState === WebSocket.OPEN) {
+        try {
+            const messageId = Date.now().toString();
+            displayedMessageIds.add(messageId);
+            const data_message = {'sender':userLogin, 'content':message, 'message_id':messageId}
+            
+            // Add to your chat immediately with the ID
+            addMessage(data_message);
+            
+            // Send both message and ID to server
+            ws.send(JSON.stringify({
+                id: messageId,
+                content: message
+            }));
+            
+            messageInput.value = '';
+        } catch (error) {
+            console.error("Error sending message:", error);
+            addSystemMessage("Failed to send message");
+        }
+    }
+}
+
+
+    // Send message on Enter key
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Focus the input field when page loads
+    window.addEventListener('load', () => {
+        messageInput.focus();
+    });
+</script>
+{% endblock %}

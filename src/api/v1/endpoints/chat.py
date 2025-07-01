@@ -105,7 +105,7 @@ async def chat_endpoint(
     chat_manager = get_chat_manager_manual()
 
     if password is None:
-        password = chat_manager._room_serv.protected_cons.get(f'room_password_{room_id}', None)
+        password = chat_manager._room_serv.private_rooms.get(f'room_password_{room_id}', None)
 
 
     # Initialize room if it doesn't exist
@@ -248,8 +248,8 @@ async def create_protected_room(
         status_code=303
     )
 
-    chat_manager._room_serv.protected_cons[f'room_password_{room_id}'] = password
-    chat_manager._room_serv.protected_cons[f'room_id'] = room_id
+    chat_manager._room_serv.private_rooms[f'room_password_{room_id}'] = password
+    chat_manager._room_serv.private_rooms[f'room_id'] = room_id
     
     if not success:
         # Handle join failure

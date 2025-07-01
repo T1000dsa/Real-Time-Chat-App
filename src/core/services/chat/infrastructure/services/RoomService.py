@@ -11,7 +11,8 @@ class RoomService(RoomRepository):
     def __init__(self):
         self.rooms: Dict[str, Dict[str, Dict[str, Optional[str], Set]]] = defaultdict(dict)
         self.private_rooms: Dict[str, Dict] = {}  # room_id: {name, password, clients}
-        self.protected_cons:dict = {}
+        self.direct_rooms: Dict[str, Dict] = {} # user_login_1 set of users
+
 
     async def create_room(self, room_type: str, name: str, password: Optional[str] = None) -> str:
         room_id = str(uuid.uuid4())

@@ -7,7 +7,7 @@ from logging.config import dictConfig
 import uvicorn
 import logging
 
-from src.core.config.config import settings, media_root, static_root, main_url
+from src.core.config.config import settings, media_root, static_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
@@ -16,7 +16,10 @@ from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
 from src.api.v1.auth.authentication import router as auth_router
 from src.api.v1.endpoints.chat import router as chat_router
+from src.api.v1.endpoints.direct_messages import router as direct_msg_router
 from src.api.v1.auth.profile_managment import router as profile_router
+
+# Write new tests, chat manager adjust, crsf adjust, ci-cd pipline 
 
 
 @asynccontextmanager
@@ -24,8 +27,6 @@ async def lifespan(app: FastAPI):
     settings.create_directories()
     dictConfig(LOG_CONFIG)
     logger = logging.getLogger(__name__)
-    logger.info(main_url)
-    #logger.info(settings)
     app.mount("/media", StaticFiles(directory=media_root), name="media")
     app.mount("/static", StaticFiles(directory=static_root), name="static")
 
@@ -60,6 +61,7 @@ app.include_router(main_router)
 app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(chat_router)
+app.include_router(direct_msg_router)
 
 if __name__ == '__main__':
     uvicorn.run(

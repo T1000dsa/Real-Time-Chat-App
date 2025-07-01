@@ -89,11 +89,11 @@ default_picture_none = settings.default_picture_none
 max_file_size = 10 * 1024**2 # 10 mb
 
 main_prefix = settings.prefix.api_data.prefix
-main_url = f'http://{settings.run.host}:{settings.run.port}'
+EXTERNAL_BASE_URL="http://localhost:8000"
 
 #temporary placement
-url_pass_changer = {'title':'password reset', 'url':f'{main_url}{main_prefix}/reset_password'}
-url_email_verification = {'title':'password change', 'url':f'{main_prefix}/password_change'}
+url_pass_changer = {'title':'password reset', 'url':f'{EXTERNAL_BASE_URL}{main_prefix}/reset_password'}
+url_email_verification = {'title':'password change', 'url':f'{EXTERNAL_BASE_URL}{main_prefix}/password_change'}
 
 
 if settings.mode.mode not in ('DEV', 'TEST'):

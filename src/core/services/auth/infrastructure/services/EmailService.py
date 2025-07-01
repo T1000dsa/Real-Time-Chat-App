@@ -7,7 +7,7 @@ from typing import Optional
 
 from src.core.services.auth.domain.interfaces import EmailRepo
 from src.utils.time_check import time_checker
-from src.core.config.config import settings, main_prefix, main_url
+from src.core.config.config import settings, EXTERNAL_BASE_URL, main_prefix
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.services.auth.infrastructure.services.User_Crud import UserService
 from src.core.services.tasks.email_task import send_email_task
@@ -64,7 +64,7 @@ class EmailService(EmailRepo):
     # Other methods remain the same...
     @time_checker
     async def send_verification_email(self, recipient: str) -> bool:
-        verification_url = f"{main_url}{main_prefix}/verify_email"
+        verification_url = f"{EXTERNAL_BASE_URL}{main_prefix}/verify_email"
         subject = "Please verify your email address"
         body = f"Click this link to verify your email: {verification_url}"
         html_body = f"""<html><body><p>Click <a href="{verification_url}">here</a> to verify.</p></body></html>"""

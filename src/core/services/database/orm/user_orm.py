@@ -72,7 +72,6 @@ async def insert_data_user(
     try:
         res = UserSchema.model_validate(data, from_attributes=True)
         user_data = {i: k for i, k in res.model_dump().items() if i != 'password_again'}
-        logger.debug(f"{user_data=}")
         new_data = UserModel(**user_data)
         new_data.password = await hash_service.hash_password(new_data.password)
         session.add(new_data)
