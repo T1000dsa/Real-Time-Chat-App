@@ -17,8 +17,13 @@ async def select_messages(
     session: AsyncSession,
     message_data:MessabeSchemaBase
 ) -> MessageModel:
-    query = select(MessageModel).where(MessageModel.room_id==message_data.room_id and MessageModel.user_id == message_data.user_id)
-    res = (await session.execute(query)).scalars().all()[-20:]
+    query = select(MessageModel).where(
+        MessageModel.room_id == message_data.room_id 
+        and 
+        MessageModel.user_id == message_data.user_id
+        and
+        MessageModel.room_id == message_data.room_type)
+    res = (await session.execute(query)).scalars().all()[-40:]
     return res
 
 @time_checker

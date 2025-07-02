@@ -19,7 +19,6 @@ from src.api.v1.endpoints.chat import router as chat_router
 from src.api.v1.endpoints.direct_messages import router as direct_msg_router
 from src.api.v1.auth.profile_managment import router as profile_router
 
-# Write new tests, chat manager adjust, crsf adjust, ci-cd pipline 
 
 
 @asynccontextmanager

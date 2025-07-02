@@ -10,15 +10,15 @@ from src.core.services.chat.infrastructure.services.ConnectionManager import Con
 def get_meessage_connection_manager() -> ConnectionManager:
     return ConnectionManager()
 
+def get_room_service() -> RoomService:
+    return RoomService()
+
 def get_message_service(
-        conn_manager = Depends(get_meessage_connection_manager)
+        conn_manager = Depends(get_meessage_connection_manager),
         ) -> MessageService:
     
     message_service = MessageService(connection_manager=conn_manager)
     return message_service
-
-def get_room_service() -> RoomService:
-    return RoomService()
 
 def get_chat_manager(
         message_service = Depends(get_message_service),
@@ -29,8 +29,8 @@ def get_chat_manager(
 
 def get_chat_manager_manual():
     conn_manager = ConnectionManager()
-    message_service = MessageService(connection_manager=conn_manager)
     room_service = RoomService()
+    message_service = MessageService(connection_manager=conn_manager)
     return ChatManager(message_repo=message_service, room_service=room_service)
 
 ChantManagerDI = Annotated[ChatManager, Depends(get_chat_manager)]

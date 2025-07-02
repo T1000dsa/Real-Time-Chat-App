@@ -5,7 +5,7 @@
 <h1>{{ title }}</h1>
 <p>Logged in as: {{ user.login }}</p>
 <div id="status">Disconnected</div>
-<div id="chat"></div>
+<div id="chat">Chat-Body</div>
 <div>
     <input type="text" id="message" placeholder="Type your message..." autocomplete="off">
     <button onclick="sendMessage()">Send</button>
@@ -58,17 +58,18 @@
         statusDiv.style.color = "green";
         addSystemMessage("Connected to chat room!");
     };
+    console.log(event)
 
     // Handle incoming messages
     ws.onmessage = (event) => {
     console.log("Raw message received:", event.data);
     try {
         const data = JSON.parse(event.data);
+        console.log(data.id, data.type)
         
         // Skip duplicates for non-system messages
         if (data.type !== 'system' && displayedMessageIds.has(data.id)) return;
-        displayedMessageIds.add(data.id);
-        console.log(data.id)
+            displayedMessageIds.add(data.id);
         
         // Handle all message types
         switch(data.type) {
@@ -89,11 +90,11 @@
                 addMessage(data);
         }
     } catch (e) {
+        console.log('Error parsing message:', e)
         console.error('Error parsing message:', e);
         addSystemMessage('Received invalid message');
     }
 };
-
 
 
     // Handle connection closing
@@ -167,8 +168,7 @@ function formatTimestamp(isoString, isHistorical = false) {
         timestamp: new Date().toISOString()
     });
 }
-    // Helper function to add messages to the chat
-    // Helper function to add messages to the chat
+
     let lastSystemMessage = {
     content: null,
     timestamp: null
@@ -178,7 +178,7 @@ function formatTimestamp(isoString, isHistorical = false) {
     function addMessage(data) {
     const msgElement = document.createElement('div');
     const timestamp = formatTimestamp(data.timestamp, data.type === 'historical');
-    console.log(timestamp, data.type === 'historical')
+    console.log(timestamp, data)
         
 
     // Handle all message types
@@ -194,7 +194,8 @@ function formatTimestamp(isoString, isHistorical = false) {
         msgElement.className = "user-message";
         msgElement.innerHTML = `[${timestamp}] ${data.sender}: ${data.content}`;
     }
-    
+
+
     chatDiv.appendChild(msgElement);
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }
@@ -202,11 +203,12 @@ function formatTimestamp(isoString, isHistorical = false) {
     // Function to send messages
     function sendMessage() {
     const message = messageInput.value.trim();
+    console.log(message && ws.readyState === WebSocket.OPEN)
     if (message && ws.readyState === WebSocket.OPEN) {
         try {
             const messageId = Date.now().toString();
             displayedMessageIds.add(messageId);
-            const data_message = {'sender':userLogin, 'content':message, 'message_id':messageId}
+            const data_message = {'sender':userLogin, 'content':message, 'message_id':messageId, 'type':'message'}
             
             // Add to your chat immediately with the ID
             addMessage(data_message);
@@ -214,11 +216,13 @@ function formatTimestamp(isoString, isHistorical = false) {
             // Send both message and ID to server
             ws.send(JSON.stringify({
                 id: messageId,
-                content: message
+                content: message,
+                type:'message'
             }));
             
             messageInput.value = '';
         } catch (error) {
+            console.log('Error parsing message:', e);
             console.error("Error sending message:", error);
             addSystemMessage("Failed to send message");
         }

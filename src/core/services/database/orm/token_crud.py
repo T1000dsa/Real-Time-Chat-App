@@ -74,11 +74,6 @@ async def update_data_token(
     old_token_model: RefreshTokenModel
 ) -> RefreshTokenModel:
     """Properly handles refresh token insertion with error handling"""
-    logger.debug(token_scheme)
-    logger.debug(type(token_scheme))
-
-    logger.debug(old_token_model)
-    logger.debug(type(old_token_model))
     try:
 
         if old_token_model:
