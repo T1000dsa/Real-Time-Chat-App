@@ -68,6 +68,7 @@
         // Skip duplicates for non-system messages
         if (data.type !== 'system' && displayedMessageIds.has(data.id)) return;
         displayedMessageIds.add(data.id);
+        console.log(data.id)
         
         // Handle all message types
         switch(data.type) {

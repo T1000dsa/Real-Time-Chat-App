@@ -1,6 +1,4 @@
 import json
-from datetime import datetime
-from typing import List
 import logging
 from collections import defaultdict
 
@@ -11,7 +9,8 @@ from src.core.services.chat.domain.interfaces.MessageRepo import MessageReposito
 from src.core.services.chat.infrastructure.services.ConnectionManager import ConnectionManager
 from src.core.services.chat.infrastructure.services.RoomService import RoomService
 from src.utils.time_check import time_checker
-
+from src.core.services.cache.redis import manager as redis_manager
+from src.core.config.config import settings
 
 
 logger = logging.getLogger(__name__)
@@ -94,14 +93,22 @@ class MessageService(MessageRepository):
                     try:
                         if room_id == msg.room_id and room_type == msg.room_type:
                             user_data = await auth._repo.get_user_for_auth_by_id(auth.session, int(msg.user_id))
-                            message_data = json.dumps({
-                                "id": str(msg.id),
-                                "type": "historical",
-                                "sender_id": msg.user_id,
-                                "sender": user_data.login,
-                                "content": msg.message,
-                                "timestamp": msg.created_at.isoformat()
-                            })
-                            await self.connection_manager.send_personal_message(message_data, client_id)
+                            cache_data:bytes = await redis_manager.redis.get(msg.id)
+                            logger.debug(f"cached data: {cache_data} {type(cache_data)}")
+                            if cache_data:
+                                await self.connection_manager.send_personal_message(cache_data.decode(), client_id)
+
+                            else:
+                                message_data = json.dumps({
+                                    "id": str(msg.id),
+                                    "type": "historical",
+                                    "sender_id": msg.user_id,
+                                    "sender": user_data.login,
+                                    "content": msg.message,
+                                    "timestamp": msg.created_at.isoformat()
+                                })
+                                logger.debug(f"message_data: {cache_data}")
+                                await redis_manager.redis.set(msg.id, message_data, ex=settings.redis.cache_time)
+                                await self.connection_manager.send_personal_message(message_data, client_id)
                     except Exception as e:
                         logger.error(f"Error sending historical message: {str(e)}")

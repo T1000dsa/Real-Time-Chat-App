@@ -1,4 +1,6 @@
-from pydantic import BaseModel, field_validator, SecretStr, EmailStr
+from pydantic import BaseModel, field_validator, SecretStr
+from datetime import timedelta
+from typing import Any, Union
 
 
 class RunConfig(BaseModel):
@@ -35,9 +37,34 @@ class RedisSettings(BaseModel):
     host:str = 'localhost'
     port:int = 6379
     db:int = 0
-    cache_time:int = 1
-    cache_time_auth:int = 1
+    cache_time:timedelta = timedelta(hours=1)
+    cache_time_auth:timedelta = timedelta(minutes=5)
     cache_auth_attempts:int = 5
+
+    @field_validator('cache_time', mode='before')
+    @classmethod
+    def parse_timedelta_cache_time(cls, value: Union[int, float]) -> timedelta:
+        if isinstance(value, timedelta):
+            return value
+        try:
+            # Assuming the env var is a number representing hours
+            hours = int(value)
+            return timedelta(hours=hours)
+        except (ValueError, TypeError):
+            raise ValueError(f"Could not parse timedelta from value: {value}")
+        
+    @field_validator('cache_time_auth', mode='before')
+    @classmethod
+    def parse_timedelta_cache_time_auth(cls, value: Union[int, float]) -> timedelta:
+        if isinstance(value, timedelta):
+            return value
+        try:
+            # Assuming the env var is a number representing hours
+            mins = int(value)
+            return timedelta(minutes=mins)
+        except (ValueError, TypeError):
+            raise ValueError(f"Could not parse timedelta from value: {value}")
+        
 
 class CurrentDB(BaseModel):
     database:str = 'postgres'

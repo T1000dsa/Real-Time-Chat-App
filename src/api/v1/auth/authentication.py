@@ -6,10 +6,11 @@ from pydantic import ValidationError
 import logging
 
 from src.core.schemas.user import UserSchema
-from src.core.config.config import main_prefix
+from src.core.config.config import main_prefix, settings
 from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER
 from src.api.v1.utils.render_auth import render_login_form, render_register_form
 from src.utils.time_check import time_checker
+from src.core.services.cache.auth_redis import check_login_attempts
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,15 @@ async def handle_login(
     """Handle POST requests for login form submission"""
 
     form_data = {'login': login, 'password': password}
+    attempts_expired = await check_login_attempts(user_identifier=login)
+
+    if attempts_expired == False:
+        return await render_login_form(
+            request, 
+            errors='Too many attempts!', 
+            form_data=form_data
+        )
+
     try:
         tokens = await auth_service.authenticate_user(
             login=login,
@@ -41,7 +51,7 @@ async def handle_login(
         if not tokens:
             return await render_login_form(
                 request, 
-                errors='Invalid credentials', 
+                errors=f'Invalid credentials. Attempts left {settings.redis.cache_auth_attempts-attempts_expired[1] if attempts_expired else ''}', 
                 form_data=form_data
             )
         
@@ -59,7 +69,7 @@ async def handle_login(
             detail = str(err)
         return await render_login_form(
             request, 
-            errors=f"{detail}",
+            errors=f"{detail}. Attempts left {settings.redis.cache_auth_attempts-attempts_expired[1] if attempts_expired else ''}",
             form_data=form_data
         )
 
@@ -71,7 +81,7 @@ async def handle_login(
             detail = str(err)
         return await render_login_form(
             request, 
-            errors=detail, 
+            errors=f"{detail}. Attempts left {settings.redis.cache_auth_attempts-attempts_expired[1] if attempts_expired else ''}", 
             form_data=form_data
         )
 
