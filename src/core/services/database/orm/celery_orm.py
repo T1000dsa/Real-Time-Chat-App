@@ -11,20 +11,28 @@ from src.utils.time_check import time_checker
 logger = logging.getLogger(__name__)
 
 @time_checker
-async def disable_users(session:AsyncSession):
-    users = select(UserModel)
-    all_users = (await session.execute(users)).scalars().all()
-    now_data = datetime.now()
-    logger.debug(all_users)
-    for item in all_users:
-        if item.is_active:
-            res = await get_refresh_token_data(session, item)
-            if res:
-                if int((now_data - res.expires_at).seconds/3600) >= 24:
-                    item.is_active = False
-                    res.revoked = True
+async def disable_users(session: AsyncSession):
+    try:
+        # Get all active users
+        users = await session.execute(
+            select(UserModel).where(UserModel.is_active == True)
+        )
+        active_users = users.scalars().all()
+        
+        now_data = datetime.now()
+        for user in active_users:
+
+            refresh_token = await get_refresh_token_data(session, user)
+            if refresh_token:
+                hours_since_last_activity = (now_data - refresh_token.expires_at).total_seconds() / 3600
+                if hours_since_last_activity >= 24:
+                    user.is_active = False
+                    refresh_token.revoked = True
+
                     await session.commit()
-                    await session.refresh(item)
+    except Exception as e:
+        logger.error(f"Error in disable_users: {e}")
+        raise
 
 @time_checker
 async def health_db(session:AsyncSession):

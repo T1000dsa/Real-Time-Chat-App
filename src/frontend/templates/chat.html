@@ -62,35 +62,18 @@
 
     // Handle incoming messages
     ws.onmessage = (event) => {
-    console.log("Raw message received:", event.data);
     try {
         const data = JSON.parse(event.data);
-        console.log(data.id, data.type)
         
-        // Skip duplicates for non-system messages
-        if (data.type !== 'system' && displayedMessageIds.has(data.id)) return;
-            displayedMessageIds.add(data.id);
-        
-        // Handle all message types
-        switch(data.type) {
-            case 'system':
-                addMessage(data);
-                break;
-            case 'error':
-                addErrorMessage(data.content);
-                break;
-            case 'message':
-                addMessage(data);
-                break;
-            case 'historical':
-                addMessage(data);
-                break;
-            default:
-                console.warn('Unknown message type:', data.type);
-                addMessage(data);
+        // Only check duplicates for message type (not system messages)
+        if (data.type === 'message' && displayedMessageIds.has(data.id)) {
+            return;
         }
+        
+        displayedMessageIds.add(data.id);
+        addMessage(data);
+        
     } catch (e) {
-        console.log('Error parsing message:', e)
         console.error('Error parsing message:', e);
         addSystemMessage('Received invalid message');
     }
@@ -203,26 +186,28 @@ function formatTimestamp(isoString, isHistorical = false) {
     // Function to send messages
     function sendMessage() {
     const message = messageInput.value.trim();
-    console.log(message && ws.readyState === WebSocket.OPEN)
     if (message && ws.readyState === WebSocket.OPEN) {
         try {
-            const messageId = Date.now().toString();
-            displayedMessageIds.add(messageId);
-            const data_message = {'sender':userLogin, 'content':message, 'message_id':messageId, 'type':'message'}
-            
-            // Add to your chat immediately with the ID
-            addMessage(data_message);
-            
-            // Send both message and ID to server
-            ws.send(JSON.stringify({
-                id: messageId,
+            const messageData = {
                 content: message,
-                type:'message'
-            }));
+                type: 'message'
+            };
+            
+            // Add to local chat immediately (optimistic UI update)
+            const localMessage = {
+                id: Date.now().toString(),
+                type: 'message',
+                sender: userLogin,
+                content: message,
+                timestamp: new Date().toISOString()
+            };
+            addMessage(localMessage);
+            
+            // Send to server
+            ws.send(JSON.stringify(messageData));
             
             messageInput.value = '';
         } catch (error) {
-            console.log('Error parsing message:', e);
             console.error("Error sending message:", error);
             addSystemMessage("Failed to send message");
         }

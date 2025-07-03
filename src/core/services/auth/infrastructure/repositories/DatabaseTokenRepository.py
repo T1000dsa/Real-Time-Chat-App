@@ -8,7 +8,6 @@ import uuid
 import logging
 
 from src.core.schemas.auth_schema import RefreshToken
-from src.core.schemas.message_shema import MessageSchema, MessabeSchemaBase
 from src.core.services.auth.infrastructure.services.JWTService import JWTService
 from src.core.services.auth.domain.interfaces.TokenRepository import TokenRepository
 from src.core.services.auth.domain.models.refresh_token import RefreshTokenModel
@@ -154,7 +153,7 @@ class DatabaseTokenRepository(TokenRepository):
     async def token_scheme_factory(self, **kwargs) -> RefreshToken:
         return RefreshToken(**kwargs)
     
-    @time_checker
+    """@time_checker
     async def save_message_db(self, session:AsyncSession, message:str, room_type:str, room_id:str, sender_id:str):
         message_data = MessageSchema(user_id=sender_id, room_type=room_type, room_id=room_id, message=message)
         await save_message(session, message_data)
@@ -162,4 +161,4 @@ class DatabaseTokenRepository(TokenRepository):
     @time_checker
     async def receive_messages(self, session:AsyncSession, room_type:str, room_id:str, sender_id:str):
         message_data = MessabeSchemaBase(user_id=sender_id,room_type=room_type, room_id=room_id)
-        return await select_messages(session, message_data)
+        return await select_messages(session, message_data)"""

@@ -107,66 +107,40 @@ async def chat_endpoint(
     
     try:
         # Validate and join room
-        """if not await chat_manager._room_serv.validate_room_access(room_type, room_id, password):
+        if not await chat_manager._room_serv.validate_room_access(room_type, room_id, password):
             await websocket.close(code=4003, reason="Invalid password or room")
-            return"""
+            return
             
         await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_id)
         
         # Load message history
-        await chat_manager._msg_repo.load_message_history(chat_manager._room_serv, room_type, room_id, user_id)
-        
-        # Send join notification
-        join_message = {
-            "id": str(uuid.uuid4()),
-            "type": "system",
-            "content": f"{user_login} joined the chat",
-            "timestamp": datetime.now().isoformat()
-        }
-        await chat_manager._msg_repo.connection_manager.broadcast_to_room(
-            json.dumps(join_message),
-            room_type,
-            room_id,
-            exclude_user=user_id
+        await chat_manager._db_service(
+            chat_manager._room_serv, 
+            room_type, 
+            room_id, 
+            user_id
         )
         
         # Main message loop
         while True:
             data = await websocket.receive_text()
-            try:
-                message = json.loads(data)
-                if message.get('type') == 'message':
-                    await chat_manager._msg_repo.process_message(
-                        chat_manager._room_serv,
-                        message,
-                        room_type,
-                        room_id,
-                        user_id
-                    )
-            except json.JSONDecodeError:
-                error_msg = {
-                    "type": "error",
-                    "content": "Invalid message format"
-                }
-                await websocket.send_text(json.dumps(error_msg))
+            message = json.loads(data)
+            
+            # Add sender info to message
+            message['sender'] = user_login
+            message['sender_id'] = user_id
+            
+            await chat_manager._msg_repo.process_message(
+                chat_manager._room_serv,
+                message,
+                room_type,
+                room_id,
+                user_id
+            )
                 
     except WebSocketDisconnect:
         logger.info(f"User {user_login} disconnected")
     finally:
-        # Send leave notification
-        leave_message = {
-            "id": str(uuid.uuid4()),
-            "type": "system",
-            "content": f"{user_login} left the chat",
-            "timestamp": datetime.now().isoformat()
-        }
-        await chat_manager._msg_repo.connection_manager.broadcast_to_room(
-            json.dumps(leave_message),
-            room_type,
-            room_id,
-            exclude_user=user_id
-        )
-        
         # Clean up
         await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_id)
         await chat_manager._msg_repo.connection_manager.disconnect(user_id)

@@ -12,6 +12,9 @@ celery = Celery(
              ]
 )
 
+celery.conf.worker_pool = 'celery_pool_asyncio:TaskPool'
+celery.conf.worker_concurrency = settings.db.pool_size
+
 # Configuration
 celery.conf.update(
     task_serializer='json',
@@ -30,6 +33,6 @@ celery.conf.beat_schedule = {
 
     'db_disable_users': {
         'task': 'src.core.services.tasks.db_tasks.disable_inactive_users_task',
-        'schedule': 3600.0, # every hour
+        'schedule': 60.0, # every min
     },
 }

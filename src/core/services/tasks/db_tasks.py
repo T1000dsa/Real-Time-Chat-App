@@ -1,31 +1,35 @@
 import logging
 import asyncio
-
+from contextlib import asynccontextmanager
+from celery import current_task
 from src.core.dependencies.db_injection import db_helper
 from src.core.services.tasks.celery import celery
 from src.core.services.database.orm.celery_orm import disable_users
 
-
 logger = logging.getLogger(__name__)
 
-async def disable_inactive_users_async():
-    try:
-        async with db_helper.async_session() as db_session:
-            await disable_users(db_session)
-            logger.info("Successfully disabled users!")
-            return {
-                "status": "success"
-            }
-    except Exception as e:
-        logger.error(f"Error disabling inactive users: {e}")
-        return {
-                "status": "bad_result"
-            }
-    
 
-@celery.task
-def disable_inactive_users_task():
-    asyncio.run(disable_inactive_users_async())
-    return {
-                "status": "success"
-            }
+@celery.task(bind=True)
+def disable_inactive_users_task(self):
+    """Celery task wrapper with proper async handling"""
+    try:
+        # Create new event loop for this task
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Process users in batches to avoid memory issues
+            result = loop.run_until_complete(_process_users_batch())
+            return {"status": "success", "processed": result}
+        finally:
+            # Clean up async resources
+            loop.run_until_complete(db_helper.dispose())
+            loop.close()
+    except Exception as e:
+        logger.error(f"Task failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+async def _process_users_batch():
+    """Process users in a managed session"""
+    async with db_helper.async_session() as session:
+        return await disable_users(session)

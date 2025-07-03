@@ -132,14 +132,18 @@ async def delete_data_by_user(
         raise err
         
 @time_checker
-async def get_refresh_token_data(session: AsyncSession, user:UserModel) -> RefreshTokenModel:
-    logger.debug('in get_refresh_token_data')
-    stm = select(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
-    result = await session.execute(stm)
-    result = result.scalars().all()
-    if result:
-        return max(result, key=lambda x:x.created_at)
-    return None
+async def get_refresh_token_data(session: AsyncSession, user: UserModel) -> Optional[RefreshTokenModel]:
+    try:
+        result = await session.execute(
+            select(RefreshTokenModel)
+            .where(RefreshTokenModel.user_id == user.id)
+            .order_by(RefreshTokenModel.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+    except Exception as e:
+        logger.error(f"Error in get_refresh_token_data: {e}")
+        return None
     
 
 @time_checker

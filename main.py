@@ -11,6 +11,7 @@ from src.core.config.config import settings, media_root, static_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
+from src.core.services.cache.redis import ConnectionManager
 
 from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
@@ -18,7 +19,6 @@ from src.api.v1.auth.authentication import router as auth_router
 from src.api.v1.endpoints.chat import router as chat_router
 from src.api.v1.endpoints.direct_messages import router as direct_msg_router
 from src.api.v1.auth.profile_managment import router as profile_router
-
 
 
 @asynccontextmanager
@@ -29,11 +29,22 @@ async def lifespan(app: FastAPI):
     app.mount("/media", StaticFiles(directory=media_root), name="media")
     app.mount("/static", StaticFiles(directory=static_root), name="static")
 
+    redis_manager = ConnectionManager()
+    app.state.redis_manager = redis_manager
+
+    try:
+        await redis_manager.redis.flushdb()
+        logger.info("🧹 Redis database flushed successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to flush Redis database: {e}")
     
     yield  # FastAPI handles requests here
 
     try:
+        await redis_manager.pubsub.close()
+        await redis_manager.redis.close()
         await db_helper.dispose()
+        redis_manager.redis.close()
 
         logger.info("✅ Connection pool closed cleanly")
     except Exception as e:
