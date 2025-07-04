@@ -33,6 +33,6 @@ celery.conf.beat_schedule = {
 
     'db_disable_users': {
         'task': 'src.core.services.tasks.db_tasks.disable_inactive_users_task',
-        'schedule': 60.0, # every min
+        'schedule': 3600.0, # every hour
     },
 }

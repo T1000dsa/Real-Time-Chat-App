@@ -103,6 +103,7 @@ async def chat_endpoint(
     password: str = Query(None),
 ):
     # Connect to WebSocket
+    logger.debug('In websocket')
     await chat_manager._msg_repo.connection_manager.connect(websocket, user_id)
     
     try:
@@ -110,11 +111,15 @@ async def chat_endpoint(
         if not await chat_manager._room_serv.validate_room_access(room_type, room_id, password):
             await websocket.close(code=4003, reason="Invalid password or room")
             return
-            
-        await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_id)
+        
+        logger.debug(f'{user_id} tries to join {room_id}')
+        await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_id, chat_manager._room_serv)
+        logger.debug(chat_manager._room_serv.rooms)
         
         # Load message history
-        await chat_manager._db_service(
+        await chat_manager._db_service.load_message_history(
+            chat_manager.session, 
+            chat_manager._msg_repo.connection_manager,
             chat_manager._room_serv, 
             room_type, 
             room_id, 
@@ -131,7 +136,9 @@ async def chat_endpoint(
             message['sender_id'] = user_id
             
             await chat_manager._msg_repo.process_message(
-                chat_manager._room_serv,
+                chat_manager.session, 
+                chat_manager._msg_repo.connection_manager,
+                chat_manager._room_serv, 
                 message,
                 room_type,
                 room_id,
@@ -142,8 +149,8 @@ async def chat_endpoint(
         logger.info(f"User {user_login} disconnected")
     finally:
         # Clean up
-        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_id)
-        await chat_manager._msg_repo.connection_manager.disconnect(user_id)
+        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_id, chat_manager._room_serv)
+        await chat_manager._msg_repo.connection_manager.disconnect(user_id, chat_manager._room_serv)
 
 
 @router.post("/create_room")
@@ -165,7 +172,8 @@ async def create_protected_room(
         user_id=str(user.id),
         room_type=room_type,
         room_id=room_id,
-        password=password
+        password=password,
+        room_serv=chat_manager._room_serv
     )
 
     response = RedirectResponse(
