@@ -11,8 +11,7 @@ class ConnectionManager:
     def __init__(self):
         # user_id: WebSocket
         self.active_connections: Dict[str, WebSocket] = {}
-        # room_type: room_id: set(user_ids)
-        #self.room_memberships: DefaultDict[str, DefaultDict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
+
 
     async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
@@ -25,19 +24,34 @@ class ConnectionManager:
         for room_type in room_serv.rooms:
             for room_id in room_serv.rooms[room_type]:
                 if user_id in room_serv.rooms[room_type][room_id]:
-                    room_serv.rooms[room_type][room_id].discard(user_id)
+                    client = {i for i in room_serv.rooms[room_type][room_id]['clients'] if i == user_id}
+                    if client:
+                        client.discard(user_id)
 
     async def join_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
-        if room_type not in self.rooms:
-            self.rooms[room_type] = {}
-        if room_id not in self.rooms[room_type]:
-            self.rooms[room_type][room_id] = set()
-        self.rooms[room_type][room_id].add(user_id)
-        logger.info(f"User {user_id} joined {room_type}/{room_id}. Current members: {self.rooms[room_type][room_id]}")
+        logger.debug(room_serv.rooms)
+
+        if room_serv.rooms.get(room_type) is None:
+            room_serv.rooms[room_type] = {}
+        
+        if room_serv.rooms.get(room_type).get(room_id) is None:
+            room_serv.rooms[room_type][room_id] = {
+                "name":room_id,
+                "password":None,
+                "messages":[],
+                "clients":set()
+                }
+            
+        logger.debug(room_serv.rooms[room_type][room_id]['clients'])
+
+        room_serv.rooms[room_type][room_id]['clients'].add(user_id)
+        logger.info(f"User {user_id} joined {room_type}/{room_id}. Current members: {room_serv.rooms[room_type][room_id]}")
 
     async def leave_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
         if room_type in room_serv.rooms and room_id in room_serv.rooms[room_type]:
-            room_serv.rooms[room_type][room_id].discard(user_id)
+            client = {i for i in room_serv.rooms[room_type][room_id]['clients'] if i == user_id}
+            if client:
+                client.discard(user_id)
             logger.info(f"User {user_id} left {room_type}/{room_id}")
 
     async def send_personal_message(self, message: str, user_id: str):

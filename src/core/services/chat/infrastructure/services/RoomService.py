@@ -7,15 +7,16 @@ logger = logging.getLogger(__name__)
 
 class RoomService:
     def __init__(self):
-        # Structure: {room_type: {room_id: {'name': str, 'password': str, 'messages': list}}}
-        self.rooms: DefaultDict[str, Dict[str, Dict]] = defaultdict(dict)
+        # Structure: {room_type: {room_id: {'name': str, 'password': str, 'messages': list, 'clients':{} }}}
+        self.rooms: DefaultDict[str, Dict[str, Dict[str, str, list, set]]] = defaultdict(dict)
         
     async def create_room(self, room_type: str, name: str, password: Optional[str] = None) -> str:
         room_id = str(uuid.uuid4())
         self.rooms[room_type][room_id] = {
             'name': name,
             'password': password,
-            'messages': []  # Store recent messages in memory
+            'messages': [],  # Store recent messages in memory
+            'clients':{}
         }
         return room_id
 

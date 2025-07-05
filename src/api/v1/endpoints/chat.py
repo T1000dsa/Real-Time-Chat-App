@@ -103,7 +103,7 @@ async def chat_endpoint(
     password: str = Query(None),
 ):
     # Connect to WebSocket
-    logger.debug('In websocket')
+    logger.debug(f'In websocket {chat_manager._room_serv.rooms}')
     await chat_manager._msg_repo.connection_manager.connect(websocket, user_id)
     
     try:
@@ -148,7 +148,7 @@ async def chat_endpoint(
     except WebSocketDisconnect:
         logger.info(f"User {user_login} disconnected")
     finally:
-        # Clean up
+        logger.info(f"In finally body")
         await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_id, chat_manager._room_serv)
         await chat_manager._msg_repo.connection_manager.disconnect(user_id, chat_manager._room_serv)
 
