@@ -16,7 +16,6 @@ class RoomService:
             self.rooms[room_type] = {}
 
         self.rooms[room_type][name] = {
-                'name': name,
                 'password': password,
                 'messages': [],
                 'clients':set()
@@ -29,16 +28,14 @@ class RoomService:
             self.rooms[room_type][room_name]['messages'] = self.rooms[room_type][room_name]['messages'][-50:]
 
     async def get_available_rooms(self) -> Dict[str, List[Dict]]:
-        logger.debug(self.rooms.items())
+        logger.debug(self.rooms)
         return {
             room_type: [
                 {
-                    'id': room_name,
-                    'name': data['name'],
-                    'has_password': data['password'] is not None,
-                    'user_count': len(data['clients'])
+                    'has_password': data.get('password'),
+                    'user_count': len(data.get('clients') if data.get('clients') else [])
                 }
-                for room_name, data in rooms.items()
+                for _, data in rooms.items()
             ]
             for room_type, rooms in self.rooms.items()
         }

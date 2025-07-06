@@ -38,6 +38,8 @@
     params.append('password', userPassword);
 }
 
+    console.log(userId, userLogin, roomType, roomName);
+
     
     // Connect to specific room
     const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomName}?${params.toString()}`;

@@ -14,8 +14,9 @@ class ConnectionManager:
 
 
     async def connect(self, websocket: WebSocket, user_id: str):
-        await websocket.accept()
-        self.active_connections[user_id] = websocket
+        if user_id not in self.active_connections:
+            await websocket.accept()
+            self.active_connections[user_id] = websocket
 
     async def disconnect(self, user_id: str, room_serv:RoomService):
         if user_id in self.active_connections:
@@ -29,15 +30,12 @@ class ConnectionManager:
                         client.discard(user_id)
 
     async def join_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
-        logger.debug(room_serv.rooms)
-
-
-        logger.debug(room_serv.rooms[room_type][room_id]['clients'])
-
-        room_serv.rooms[room_type][room_id]['clients'].add(user_id)
-        logger.info(f"User {user_id} joined {room_type}/{room_id}. Current members: {room_serv.rooms[room_type][room_id]}")
+        if user_id not in room_serv.rooms[room_type][room_id]['clients']:
+            room_serv.rooms[room_type][room_id]['clients'].add(user_id)
+            logger.info(f"User {user_id} joined {room_type}/{room_id}. Current members: {room_serv.rooms[room_type][room_id]}")
 
     async def leave_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
+        logger.debug(room_serv.rooms)
         if room_type in room_serv.rooms and room_id in room_serv.rooms[room_type]:
             client = {i for i in room_serv.rooms[room_type][room_id]['clients'] if i == user_id}
             if client:
@@ -53,8 +51,9 @@ class ConnectionManager:
                 await self.disconnect(user_id)
 
     async def broadcast_to_room(self, message: str, room_type: str, room_id: str, room_serv:RoomService, exclude_user: Optional[str] = None):
+        logger.debug(room_serv.rooms)
         if room_type in room_serv.rooms and room_id in room_serv.rooms[room_type]:
-            for user_id in list(room_serv.rooms[room_type][room_id]):
+            for user_id in list(room_serv.rooms[room_type][room_id]['clients']):
                 if user_id != exclude_user and user_id in self.active_connections:
                     try:
                         await self.active_connections[user_id].send_text(message)

@@ -6,16 +6,6 @@ from src.core.services.chat.infrastructure.services.ConnectionManager import Con
 
 
 class DBRepo(ABC):
-    """@time_checker
-    async def save_message_db(self, session:AsyncSession, message:str, room_type:str, room_id:str, sender_id:str):
-        message_data = MessageSchema(user_id=sender_id, room_type=room_type, room_id=room_id, message=message)
-        await save_message(session, message_data)
-
-    @time_checker
-    async def receive_messages(self, session:AsyncSession, room_type:str, room_id:str, sender_id:str):
-        message_data = MessabeSchemaBase(user_id=sender_id,room_type=room_type, room_id=room_id)
-        return await select_messages(session, message_data)"""
-    
     @abstractmethod
     async def save_message_db(self, session:AsyncSession, message:str, room_type:str, room_id:str, sender_id:str): ...
 

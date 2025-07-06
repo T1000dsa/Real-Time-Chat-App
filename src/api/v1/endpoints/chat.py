@@ -89,12 +89,12 @@ async def general_chats_room(
         context=template_response_body_data
     )
 
-@router.websocket("/ws/chat/{room_type}/{room_id}")
+@router.websocket("/ws/chat/{room_type}/{room_name}")
 async def chat_endpoint(
     websocket: WebSocket,
     chat_manager: ChantManagerDI,
     room_type: str,
-    room_id: str,
+    room_name: str,
     user_id: str = Query(...),
     user_login: str = Query(...),
     password: str = Query(None),
@@ -111,8 +111,8 @@ async def chat_endpoint(
             await websocket.close(code=4003, reason="Invalid password or room")
             return"""
         
-        logger.debug(f'{user_id} tries to join {room_id}')
-        await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_id, room_service)
+        logger.debug(f'{user_id} tries to join {room_name}')
+        await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_name, room_service)
         logger.debug(room_service.rooms)
         
         # Load message history
@@ -121,7 +121,7 @@ async def chat_endpoint(
             chat_manager._msg_repo.connection_manager,
             room_service, 
             room_type, 
-            room_id, 
+            room_name, 
             user_id
         )
         
@@ -136,11 +136,11 @@ async def chat_endpoint(
             
             await chat_manager._msg_repo.process_message(
                 chat_manager.session, 
-                chat_manager._msg_repo.connection_manager,
+                chat_manager._db_service,
                 room_service, 
                 message,
                 room_type,
-                room_id,
+                room_name,
                 user_id
             )
                 
@@ -148,7 +148,7 @@ async def chat_endpoint(
         logger.info(f"User {user_login} disconnected")
     finally:
         logger.info(f"In finally body")
-        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_id, room_service)
+        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_name, room_service)
         await chat_manager._msg_repo.connection_manager.disconnect(user_id, room_service)
 
 

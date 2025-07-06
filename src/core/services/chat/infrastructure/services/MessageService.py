@@ -11,7 +11,6 @@ from src.core.services.chat.infrastructure.services.RoomService import RoomServi
 from src.core.services.chat.infrastructure.services.DBService import DBService
 
 
-
 logger = logging.getLogger(__name__)
 
 class MessageService:
@@ -19,10 +18,14 @@ class MessageService:
         self.connection_manager = connection_manager
 
     async def process_message(
-            self, session:AsyncSession, 
-            DBService:DBService, room_service: 
-            RoomService, message_data: Dict, room_type: str, 
-            room_id: str, sender_id: str
+            self, 
+            session:AsyncSession, 
+            DBService:DBService, 
+            room_service: RoomService, 
+            message_data: Dict, 
+            room_type: str, 
+            room_id: str, 
+            sender_id: str
             ):
         try:
             # Create full message object
@@ -38,7 +41,7 @@ class MessageService:
             # Save to database
             await DBService.save_message_db(
                 session,
-                message=full_message['content'],
+                message=f"{sender_id}: {full_message['content']}",
                 room_type=room_type,
                 room_id=room_id,
                 sender_id=sender_id
@@ -51,7 +54,8 @@ class MessageService:
             await self.connection_manager.broadcast_to_room(
                 message=json.dumps(full_message),
                 room_type=room_type,
-                room_id=room_id
+                room_id=room_id,
+                room_serv=room_service
             )
             
         except Exception as e:
