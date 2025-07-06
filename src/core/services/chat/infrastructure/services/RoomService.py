@@ -8,41 +8,48 @@ logger = logging.getLogger(__name__)
 class RoomService:
     def __init__(self):
         # Structure: {room_type: {room_id: {'name': str, 'password': str, 'messages': list, 'clients':{} }}}
-        self.rooms: DefaultDict[str, Dict[str, Dict[str, str, list, set]]] = defaultdict(dict)
+        self.rooms: Dict[str, Dict[str, Dict[str, str, list, set]]] = {}
         
     async def create_room(self, room_type: str, name: str, password: Optional[str] = None) -> str:
-        room_id = str(uuid.uuid4())
-        self.rooms[room_type][room_id] = {
-            'name': name,
-            'password': password,
-            'messages': [],  # Store recent messages in memory
-            'clients':{}
-        }
-        return room_id
+        #room_id = str(uuid.uuid4())
+        if self.rooms.get(room_type) is None:
+            self.rooms[room_type] = {}
 
-    async def add_message_to_room(self, room_type: str, room_id: str, message: Dict):
-        if room_type in self.rooms and room_id in self.rooms[room_type]:
-            self.rooms[room_type][room_id]['messages'].append(message)
+        self.rooms[room_type][name] = {
+                'name': name,
+                'password': password,
+                'messages': [],
+                'clients':set()
+            }
+
+    async def add_message_to_room(self, room_type: str, room_name: str, message: Dict):
+        if room_type in self.rooms and room_name in self.rooms[room_type]:
+            self.rooms[room_type][room_name]['messages'].append(message)
             # Keep only the last N messages in memory
-            self.rooms[room_type][room_id]['messages'] = self.rooms[room_type][room_id]['messages'][-50:]
+            self.rooms[room_type][room_name]['messages'] = self.rooms[room_type][room_name]['messages'][-50:]
 
     async def get_available_rooms(self) -> Dict[str, List[Dict]]:
+        logger.debug(self.rooms.items())
         return {
             room_type: [
                 {
-                    'id': room_id,
+                    'id': room_name,
                     'name': data['name'],
                     'has_password': data['password'] is not None,
                     'user_count': len(data['clients'])
                 }
-                for room_id, data in rooms.items()
+                for room_name, data in rooms.items()
             ]
             for room_type, rooms in self.rooms.items()
         }
 
-    async def validate_room_access(self, room_type: str, room_id: str, password: Optional[str] = None) -> bool:
-        room = self.rooms.get(room_type, {}).get(room_id)
-        if not room:
+    async def validate_room_access(self, room_type: str, room_name: str, password: Optional[str] = None) -> bool:
+        room = self.rooms.get(room_type, {})
+        logger.debug(room)
+        exact_room = room.get(room_name)
+        logger.debug(exact_room)
+        logger.debug(self.rooms)
+        if not exact_room:
             return False
             
         if room_type == 'private' and room['password'] and room['password'] != password:

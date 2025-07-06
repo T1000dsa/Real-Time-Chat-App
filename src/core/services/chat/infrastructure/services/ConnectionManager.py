@@ -31,17 +31,7 @@ class ConnectionManager:
     async def join_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
         logger.debug(room_serv.rooms)
 
-        if room_serv.rooms.get(room_type) is None:
-            room_serv.rooms[room_type] = {}
-        
-        if room_serv.rooms.get(room_type).get(room_id) is None:
-            room_serv.rooms[room_type][room_id] = {
-                "name":room_id,
-                "password":None,
-                "messages":[],
-                "clients":set()
-                }
-            
+
         logger.debug(room_serv.rooms[room_type][room_id]['clients'])
 
         room_serv.rooms[room_type][room_id]['clients'].add(user_id)

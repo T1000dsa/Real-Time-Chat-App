@@ -12,6 +12,7 @@ from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
 from src.core.services.cache.redis import ConnectionManager
+from src.core.services.chat.infrastructure.services.RoomService import RoomService
 
 from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
@@ -28,6 +29,8 @@ async def lifespan(app: FastAPI):
     logger = logging.getLogger(__name__)
     app.mount("/media", StaticFiles(directory=media_root), name="media")
     app.mount("/static", StaticFiles(directory=static_root), name="static")
+
+    app.state.room_service = RoomService()
 
     redis_manager = ConnectionManager()
     app.state.redis_manager = redis_manager

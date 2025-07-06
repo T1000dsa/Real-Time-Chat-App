@@ -18,7 +18,7 @@
     // Extract room info from URL more reliably
     const pathParts = window.location.pathname.split('/').filter(part => part !== '');
     const roomType = pathParts[1]; // "general", "private", etc.
-    const roomId = pathParts[2];   // room ID
+    const roomName = pathParts[2];   // room Id
     
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
@@ -40,7 +40,7 @@
 
     
     // Connect to specific room
-    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomId}?${params.toString()}`;
+    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomName}?${params.toString()}`;
     
     console.log("Connecting to WebSocket at:", wsUrl);
 
@@ -54,7 +54,7 @@
 
     // Handle WebSocket connection opening
     ws.onopen = (event) => {
-        statusDiv.textContent = `Connected to ${roomType} room: ${roomId}`;
+        statusDiv.textContent = `Connected to ${roomType} room: ${roomName}`;
         statusDiv.style.color = "green";
         addSystemMessage("Connected to chat room!");
     };

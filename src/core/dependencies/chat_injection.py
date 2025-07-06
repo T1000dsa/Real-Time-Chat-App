@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, Request, WebSocket
 from typing import Annotated
 
 from src.core.dependencies.db_injection import DBDI
@@ -24,6 +24,14 @@ def get_message_service(
     
     message_service = MessageService(connection_manager=conn_manager)
     return message_service
+
+def get_http_room_service(request: Request) -> RoomService:
+    """For HTTP routes"""
+    return request.app.state.room_service
+
+def get_ws_room_service(websocket: WebSocket) -> RoomService:
+    """For WebSocket routes"""
+    return websocket.app.state.room_service
 
 def get_chat_manager(
         session:DBDI, 
