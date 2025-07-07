@@ -1,7 +1,5 @@
-from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy import select, update, delete, join
+from sqlalchemy import select
 import logging
 
 
@@ -20,7 +18,7 @@ async def select_messages(
     query = select(MessageModel).where(
         MessageModel.room_id == message_data.room_id 
         and 
-        MessageModel.user_id == message_data.user_id
+        MessageModel.user_id == int(message_data.user)
         and
         MessageModel.room_id == message_data.room_type)
     res = (await session.execute(query)).scalars().all()[-40:]
@@ -35,7 +33,7 @@ async def save_message(
     message = MessageModel(
         room_id=message_data.room_id,
         room_type=message_data.room_type,
-        user_id=message_data.user_id,
+        user_id=int(message_data.user),
         message=message_data.message
     )
     session.add(message)

@@ -1,12 +1,10 @@
-from fastapi import WebSocket, WebSocketDisconnect, APIRouter,Request, Query, Form
+from fastapi import WebSocket, APIRouter,Request, Query
 import logging
 
 from src.core.config.config import templates
 from src.utils.prepared_response import prepare_template 
-
-from src.core.dependencies.db_injection import db_helper
-from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create_auth_provider
-from src.core.dependencies.chat_injection import ChantManagerDI, get_chat_manager_manual
+from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER
+from src.core.dependencies.chat_injection import HTTPChantManagerDI, WSChantManagerDI
 
 
 router = APIRouter()
@@ -16,7 +14,7 @@ logger = logging.getLogger(__name__)
 @router.get('/direct-message-with-{username}')
 async def direct_message_endpoint(
     request:Request,
-    chat_manager:ChantManagerDI,
+    chat_manager:HTTPChantManagerDI,
     user:GET_CURRENT_ACTIVE_USER,
     username:str
 ):
@@ -44,13 +42,14 @@ async def direct_message_endpoint(
 @router.websocket("/ws/direct-message-with-{username}")
 async def direct_message_endpoint_websocket(
     websocket: WebSocket,
+    chat_manager:WSChantManagerDI,
     recepient_id: str = Query(...),
     actor_id: str = Query(...),
 ):
     logger.debug(f"{recepient_id=} {actor_id=}")
-    chat_manager = get_chat_manager_manual()
 
-    chat_manager._room_serv.private_rooms[actor_id][recepient_id] = {
+
+    chat_manager._room_serv.rooms[actor_id][recepient_id] = {
             'name': f"Direct between {actor_id} and {recepient_id}",
             'password': None,
             'clients': set()

@@ -1,4 +1,4 @@
-from fastapi import WebSocket, WebSocketDisconnect, APIRouter,Request, Query, Form, Depends
+from fastapi import WebSocket, WebSocketDisconnect, APIRouter,Request, Query, Form
 from fastapi.responses import RedirectResponse
 from typing import Optional
 import logging
@@ -6,10 +6,9 @@ import json
 
 from src.core.config.config import templates
 from src.utils.prepared_response import prepare_template 
-
 from src.core.dependencies.db_injection import db_helper
 from src.core.dependencies.auth_injection import GET_CURRENT_ACTIVE_USER, create_auth_provider
-from src.core.dependencies.chat_injection import ChantManagerDI, get_http_room_service, get_ws_room_service
+from src.core.dependencies.chat_injection import HTTPChantManagerDI, WSChantManagerDI
 
 
 router = APIRouter()
@@ -19,14 +18,14 @@ logger = logging.getLogger(__name__)
 async def rooms_connection(
     request: Request,
     user:GET_CURRENT_ACTIVE_USER,
-    room_service = Depends(get_http_room_service)
+    chat_manager:HTTPChantManagerDI
 ):
-    logger.debug(room_service)
+    logger.debug(chat_manager._room_serv)
 
     async with db_helper.async_session() as db_session:
         auth = create_auth_provider(db_session)
         active_users = await auth._user.get_all_active_users(auth.session)
-        private_rooms = await room_service.get_available_rooms()
+        private_rooms = await chat_manager._room_serv.get_available_rooms()
 
         prepared_data = {
             "title": f"Rooms page"
@@ -55,20 +54,20 @@ async def general_chats_room(
     user: GET_CURRENT_ACTIVE_USER, 
     room_type:str, 
     room_name: str,
-    room_service = Depends(get_http_room_service)
+    chat_manager:HTTPChantManagerDI
 ):
-    logger.debug(room_service.rooms)
+    logger.debug(chat_manager._room_serv.rooms)
     # Validate room exists
-    if room_type not in room_service.rooms or room_name not in room_service.rooms[room_type]:
+    if room_type not in chat_manager._room_serv.rooms or room_name not in chat_manager._room_serv.rooms[room_type]:
         if room_type == 'private':
             return RedirectResponse(url="/rooms", status_code=303)
         
 
-    if room_service.rooms.get(room_type) is None:
-        await room_service.create_room(room_type, room_name)
+    if chat_manager._room_serv.rooms.get(room_type) is None:
+        await chat_manager._room_serv.create_room(room_type, room_name)
 
 
-    logger.debug(room_service.rooms)
+    logger.debug(chat_manager._room_serv.rooms)
 
 
     prepared_data = {
@@ -92,16 +91,15 @@ async def general_chats_room(
 @router.websocket("/ws/chat/{room_type}/{room_name}")
 async def chat_endpoint(
     websocket: WebSocket,
-    chat_manager: ChantManagerDI,
+    chat_manager: WSChantManagerDI,
     room_type: str,
     room_name: str,
     user_id: str = Query(...),
     user_login: str = Query(...),
-    password: str = Query(None),
-    room_service = Depends(get_ws_room_service)
+    password: str = Query(None)
 ):
     # Connect to WebSocket
-    logger.debug(f'In websocket: {room_service.rooms}')
+    logger.debug(f'In websocket: {chat_manager._room_serv.rooms}')
     await chat_manager._msg_repo.connection_manager.connect(websocket, user_id)
     
     try:
@@ -112,14 +110,14 @@ async def chat_endpoint(
             return"""
         
         logger.debug(f'{user_id} tries to join {room_name}')
-        await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_name, room_service)
-        logger.debug(room_service.rooms)
+        await chat_manager._msg_repo.connection_manager.join_room(user_id, room_type, room_name, chat_manager._room_serv)
+        logger.debug(chat_manager._room_serv.rooms)
         
         # Load message history
         await chat_manager._db_service.load_message_history(
             chat_manager.session, 
             chat_manager._msg_repo.connection_manager,
-            room_service, 
+            chat_manager._room_serv, 
             room_type, 
             room_name, 
             user_id
@@ -137,26 +135,27 @@ async def chat_endpoint(
             await chat_manager._msg_repo.process_message(
                 chat_manager.session, 
                 chat_manager._db_service,
-                room_service, 
+                chat_manager._room_serv, 
                 message,
                 room_type,
                 room_name,
-                user_id
+                user_id,
+                user_login
             )
                 
     except WebSocketDisconnect:
         logger.info(f"User {user_login} disconnected")
     finally:
         logger.info(f"In finally body")
-        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_name, room_service)
-        await chat_manager._msg_repo.connection_manager.disconnect(user_id, room_service)
+        await chat_manager._msg_repo.connection_manager.leave_room(user_id, room_type, room_name, chat_manager._room_serv)
+        await chat_manager._msg_repo.connection_manager.disconnect(user_id, chat_manager._room_serv)
 
 
 @router.post("/create_room")
 async def create_protected_room(
     request: Request,
     user: GET_CURRENT_ACTIVE_USER,
-    chat_manager:ChantManagerDI,
+    chat_manager:HTTPChantManagerDI,
     name: str = Form(...),
     password: Optional[str] = Form(None),
     room_type: str = Form('private')  # Default to private

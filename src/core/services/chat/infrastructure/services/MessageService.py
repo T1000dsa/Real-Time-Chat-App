@@ -25,15 +25,16 @@ class MessageService:
             message_data: Dict, 
             room_type: str, 
             room_id: str, 
-            sender_id: str
+            user_id: str,
+            user_login: str
             ):
         try:
             # Create full message object
             full_message = {
                 "id": str(uuid.uuid4()),
                 "type": "message",
-                "sender_id": sender_id,
-                "sender_login": message_data.get('sender', 'Anonymous'),
+                "sender_id": user_id,
+                "sender": message_data.get('sender', 'Anonymous'),
                 "content": message_data.get('content'),
                 "timestamp": datetime.now().isoformat()
             }
@@ -41,10 +42,10 @@ class MessageService:
             # Save to database
             await DBService.save_message_db(
                 session,
-                message=f"{sender_id}: {full_message['content']}",
+                message=f"{user_login}: {full_message['content']}",
                 room_type=room_type,
                 room_id=room_id,
-                sender_id=sender_id
+                sender_id=user_id
             )
             
             # Add to room's in-memory history
@@ -55,7 +56,8 @@ class MessageService:
                 message=json.dumps(full_message),
                 room_type=room_type,
                 room_id=room_id,
-                room_serv=room_service
+                room_serv=room_service,
+                exclude_user=user_id
             )
             
         except Exception as e:

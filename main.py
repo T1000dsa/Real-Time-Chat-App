@@ -11,8 +11,9 @@ from src.core.config.config import settings, media_root, static_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
 from src.core.middleware.middleware import init_token_refresh_middleware
-from src.core.services.cache.redis import ConnectionManager
+from src.core.services.cache.redis import ConnectionManager as redis_conmanager
 from src.core.services.chat.infrastructure.services.RoomService import RoomService
+from src.core.services.chat.infrastructure.services.ConnectionManager import ConnectionManager
 
 from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
@@ -31,8 +32,9 @@ async def lifespan(app: FastAPI):
     app.mount("/static", StaticFiles(directory=static_root), name="static")
 
     app.state.room_service = RoomService()
+    app.state.con_manager = ConnectionManager()
 
-    redis_manager = ConnectionManager()
+    redis_manager = redis_conmanager()
     app.state.redis_manager = redis_manager
 
     try:

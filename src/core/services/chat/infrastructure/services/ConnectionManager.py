@@ -35,7 +35,6 @@ class ConnectionManager:
             logger.info(f"User {user_id} joined {room_type}/{room_id}. Current members: {room_serv.rooms[room_type][room_id]}")
 
     async def leave_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
-        logger.debug(room_serv.rooms)
         if room_type in room_serv.rooms and room_id in room_serv.rooms[room_type]:
             client = {i for i in room_serv.rooms[room_type][room_id]['clients'] if i == user_id}
             if client:
@@ -51,11 +50,13 @@ class ConnectionManager:
                 await self.disconnect(user_id)
 
     async def broadcast_to_room(self, message: str, room_type: str, room_id: str, room_serv:RoomService, exclude_user: Optional[str] = None):
+        logger.debug('In broadcast logic')
         logger.debug(room_serv.rooms)
         if room_type in room_serv.rooms and room_id in room_serv.rooms[room_type]:
             for user_id in list(room_serv.rooms[room_type][room_id]['clients']):
-                if user_id != exclude_user and user_id in self.active_connections:
+                if user_id in self.active_connections and user_id != exclude_user:
                     try:
+                        logger.debug('Actual sending text')
                         await self.active_connections[user_id].send_text(message)
                     except Exception as e:
                         logger.error(f"Error broadcasting to {user_id}: {str(e)}")

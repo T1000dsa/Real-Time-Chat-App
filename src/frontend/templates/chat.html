@@ -163,7 +163,6 @@ function formatTimestamp(isoString, isHistorical = false) {
     function addMessage(data) {
     const msgElement = document.createElement('div');
     const timestamp = formatTimestamp(data.timestamp, data.type === 'historical');
-    console.log(timestamp, data)
         
 
     // Handle all message types
@@ -175,7 +174,8 @@ function formatTimestamp(isoString, isHistorical = false) {
         msgElement.className = "historical-message";
         msgElement.innerHTML = `[${timestamp}] ${data.content}`;
     }
-    else {
+    else if (data.type === "message") {
+        console.log(timestamp, data)
         msgElement.className = "user-message";
         msgElement.innerHTML = `[${timestamp}] ${data.sender}: ${data.content}`;
     }
@@ -203,7 +203,6 @@ function formatTimestamp(isoString, isHistorical = false) {
                 content: message,
                 timestamp: new Date().toISOString()
             };
-            addMessage(localMessage);
             
             // Send to server
             ws.send(JSON.stringify(messageData));

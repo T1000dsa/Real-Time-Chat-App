@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class MessabeSchemaBase(BaseModel):
-    user_id:int
+    user:str
     room_id :str
     room_type:Optional[str] = None
 
