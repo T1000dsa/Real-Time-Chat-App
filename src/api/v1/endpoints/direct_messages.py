@@ -48,7 +48,7 @@ async def direct_message_endpoint_websocket(
 ):
     logger.debug(f"{recepient_id=} {actor_id=}")
 
-
+    chat_manager._msg_repo.connection_manager.connect(websocket, actor_id)
     chat_manager._room_serv.rooms[actor_id][recepient_id] = {
             'name': f"Direct between {actor_id} and {recepient_id}",
             'password': None,

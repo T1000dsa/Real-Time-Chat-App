@@ -16,31 +16,23 @@
     const serverUrl = "http://localhost:8000";
     
     // Extract room info from URL more reliably
-    const pathParts = window.location.pathname.split('/').filter(part => part !== '');
-    const roomType = pathParts[1]; // "general", "private", etc.
-    const roomId = pathParts[2];   // room ID
+    const pathParts = window.location.pathname.split('-', 3);
+    const username = pathParts[3];
+
+    console.log("username:", username);
     
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
     let userPassword = null;
 
-    if (roomType === "private") {
-        // Better password prompt implementation
-        userPassword = prompt('Please enter your password:');
-        while (!userPassword) {
-            userPassword = prompt('Password cannot be empty. Please enter your password:');
-        }
-    }
+
     const params = new URLSearchParams();
     params.append('user_id', userId);
     params.append('user_login', userLogin);
-    if (userPassword) {
-    params.append('password', userPassword);
-}
 
     
     // Connect to specific room
-    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/chat/${roomType}/${roomId}?${params.toString()}`;
+    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/direct-message-with-${username}`;
     
     console.log("Connecting to WebSocket at:", wsUrl);
 
@@ -54,7 +46,7 @@
 
     // Handle WebSocket connection opening
     ws.onopen = (event) => {
-        statusDiv.textContent = `Connected to ${roomType} room: ${roomId}`;
+        statusDiv.textContent = `Connected to ${username}`;
         statusDiv.style.color = "green";
         addSystemMessage("Connected to chat room!");
     };
