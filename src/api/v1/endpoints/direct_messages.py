@@ -19,6 +19,7 @@ async def direct_message_endpoint(
     username:str
 ):
     logger.debug(f"{username} - recepient, {user.login} - actor")
+    await chat_manager._room_serv.create_direct(user.login, username)
 
     prepared_data = {
             "title": f"Direct-room with {username}"

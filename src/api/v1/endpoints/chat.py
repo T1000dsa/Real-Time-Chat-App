@@ -27,6 +27,8 @@ async def rooms_connection(
         active_users = await auth._user.get_all_active_users(auth.session)
         private_rooms = await chat_manager._room_serv.get_available_rooms()
 
+        logger.debug(private_rooms)
+
         prepared_data = {
             "title": f"Rooms page"
         }

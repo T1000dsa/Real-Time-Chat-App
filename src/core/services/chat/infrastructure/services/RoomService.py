@@ -8,10 +8,12 @@ logger = logging.getLogger(__name__)
 class RoomService:
     def __init__(self):
         # Structure: {room_type: {room_id: {'name': str, 'password': str, 'messages': list, 'clients':{} }}}
-        self.rooms: Dict[str, Dict[str, Dict[str, str, list, set]]] = {}
+        self.rooms: Dict[str, Dict[str, Dict[str, list, set]]] = {}
+
+        # Structure: {actor_id: {recepient_id:str, recepients_id: set(), 'messages':list}
+        self.directs: Dict[str, Dict[str, set]] = {}
         
     async def create_room(self, room_type: str, name: str, password: Optional[str] = None) -> str:
-        #room_id = str(uuid.uuid4())
         if self.rooms.get(room_type) is None:
             self.rooms[room_type] = {}
 
@@ -20,6 +22,18 @@ class RoomService:
                 'messages': [],
                 'clients':set()
             }
+        
+    async def create_direct(self, actor_id: str, recepient_id: str) -> str:
+        if self.directs.get(actor_id) is None:
+            self.directs[actor_id] = {}
+
+        self.directs[actor_id] = {
+                'recepient_id':recepient_id,
+                'messages': [],
+                'recepients_id':set()
+            }
+        if recepient_id not in self.directs[actor_id]['recepients_id']:
+            self.directs[actor_id]['recepients_id'].add(recepient_id)
 
     async def add_message_to_room(self, room_type: str, room_name: str, message: Dict):
         if room_type in self.rooms and room_name in self.rooms[room_type]:
