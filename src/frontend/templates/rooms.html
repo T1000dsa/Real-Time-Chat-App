@@ -6,9 +6,24 @@
 <div id="public-rooms">
     <h2>Public Rooms</h2>
     <ul>
-        <li><a href="/chat/general/main">General Chat. User count {{other_rooms.general[0].user_count if other_rooms.general[0] else 0}}: </a></li> 
-        <li><a href="/chat/gaming/main">Gaming. User count: {{other_rooms.gaming[0].user_count if other_rooms.gaming[0] else 0}}</a></li>
-        <li><a href="/chat/movies/main">Movies. User count: {{other_rooms.movies[0].user_count if other_rooms.movies[0] else 0}}</a></li>
+        {% if other_rooms.general %}
+            <li><a href="/chat/general/main">General Chat. User count {{ other_rooms.general[0].user_count }}: </a></li> 
+        {% else %}
+            <li><a href="/chat/general/main">General Chat. User count 0: </a></li> 
+        {% endif %}
+
+        {% if other_rooms.gaming %}
+            <li><a href="/chat/gaming/main">Gaming. User count: {{ other_rooms.gaming[0].user_count }}</a></li>
+        {% else %}
+            <li><a href="/chat/gaming/main">Gaming. User count: 0</a></li>
+        {% endif %}
+
+        {% if other_rooms.movies %}
+            <li><a href="/chat/movies/main">Movies. User count: {{ other_rooms.movies[0].user_count }}</a></li>
+        {% else %}
+            <li><a href="/chat/movies/main">Movies. User count: 0</a></li>
+
+        {% endif %}
     </ul>
 </div>
 

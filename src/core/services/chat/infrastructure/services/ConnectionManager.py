@@ -25,9 +25,8 @@ class ConnectionManager:
         for room_type in room_serv.rooms:
             for room_id in room_serv.rooms[room_type]:
                 if user_id in room_serv.rooms[room_type][room_id]:
-                    client = {i for i in room_serv.rooms[room_type][room_id]['clients'] if i == user_id}
-                    if client:
-                        client.discard(user_id)
+                    if room_serv.rooms[room_type][room_id]['clients']:
+                        room_serv.rooms[room_type][room_id]['clients'].discard(user_id)
 
     async def join_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
         if user_id not in room_serv.rooms[room_type][room_id]['clients']:
@@ -36,10 +35,13 @@ class ConnectionManager:
 
     async def leave_room(self, user_id: str, room_type: str, room_id: str, room_serv:RoomService):
         if room_type in room_serv.rooms and room_id in room_serv.rooms[room_type]:
-            client = {i for i in room_serv.rooms[room_type][room_id]['clients'] if i == user_id}
-            if client:
-                client.discard(user_id)
-            logger.info(f"User {user_id} left {room_type}/{room_id}")
+            logger.debug(type(room_serv.rooms[room_type][room_id]['clients']))
+            logger.debug(type(user_id))
+            if room_serv.rooms[room_type][room_id]['clients']:
+                room_serv.rooms[room_type][room_id]['clients'].discard(user_id)
+                logger.info(f"User {user_id} left {room_type}/{room_id}")
+
+        logger.info(room_serv.rooms)
 
     async def send_personal_message(self, message: str, user_id: str):
         if user_id in self.active_connections:

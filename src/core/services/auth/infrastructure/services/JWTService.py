@@ -17,7 +17,7 @@ class JWTService(TokenService):
         self.secret_key = settings.jwt.key.get_secret_value()
         self.algorithm = settings.jwt.algorithm
         self.ACCESS_TOKEN_EXPIRE = timedelta(minutes=settings.jwt.ACCESS_TOKEN_EXPIRE_MINUTES)
-        self.REFRESH_TOKEN_EXPIRE = timedelta(minutes=settings.jwt.REFRESH_TOKEN_EXPIRE_DAYS) # changed from days to minutes for test
+        self.REFRESH_TOKEN_EXPIRE = timedelta(days=settings.jwt.REFRESH_TOKEN_EXPIRE_DAYS)
         
         self.ACCESS_TYPE = 'access'
         self.REFRESH_TYPE = 'refresh'

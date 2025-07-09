@@ -71,7 +71,6 @@ class DatabaseTokenRepository(TokenRepository):
                 logger.debug(f"{new_refresh=}")
                 logger.debug(f"{old_refresh=}")
 
-                logger.debug(f"{old_token=}")
 
                 # building new token scheme
                 date = jwt_service.REFRESH_TOKEN_EXPIRE + datetime.now(timezone.utc)

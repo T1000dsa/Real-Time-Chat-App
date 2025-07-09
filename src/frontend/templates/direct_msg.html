@@ -16,10 +16,11 @@
     const serverUrl = "http://localhost:8000";
     
     // Extract room info from URL more reliably
-    const pathParts = window.location.pathname.split('-', 3);
-    const username = pathParts[3];
+    const pathParts = window.location.pathname;
+    const username = pathParts.split('-', 3)[3];
 
     console.log("username:", username);
+    console.log("pathParts:", pathParts);
     
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
