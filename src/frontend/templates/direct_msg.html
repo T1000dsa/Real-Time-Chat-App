@@ -17,23 +17,27 @@
     
     // Extract room info from URL more reliably
     const pathParts = window.location.pathname;
-    const username = pathParts.split('-', 3)[3];
 
-    console.log("username:", username);
-    console.log("pathParts:", pathParts);
-    
+    const prefix = "direct-message-with-";
+    const username = pathParts.includes(prefix) 
+        ? pathParts.split(prefix)[1].replace(/\/$/, '') // Remove trailing slash if present
+        : null;
+
+    console.log("Extracted username:", username); // "some-user-name"
+
+    const recepient = "{{ recepient }}";
+    const actor = "{{ actor }}";
+
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
-    let userPassword = null;
-
 
     const params = new URLSearchParams();
-    params.append('user_id', userId);
-    params.append('user_login', userLogin);
+    params.append('recepient_id', recepient);
+    params.append('actor_id', actor);
 
     
     // Connect to specific room
-    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/direct-message-with-${username}`;
+    const wsUrl = `${serverUrl.replace('http', 'ws')}/ws/direct-message-with-${username}?${params.toString()}`;
     
     console.log("Connecting to WebSocket at:", wsUrl);
 
@@ -86,8 +90,6 @@
     }
 };
 
-
-
     // Handle connection closing
     ws.onclose = (event) => {
         statusDiv.textContent = "Disconnected";
@@ -98,7 +100,7 @@
         setTimeout(() => {
             addSystemMessage("Attempting to reconnect...");
             window.location.reload();
-        }, 10000);
+        }, 60000);
     };
 
     // Handle errors
@@ -159,8 +161,7 @@ function formatTimestamp(isoString, isHistorical = false) {
         timestamp: new Date().toISOString()
     });
 }
-    // Helper function to add messages to the chat
-    // Helper function to add messages to the chat
+
     let lastSystemMessage = {
     content: null,
     timestamp: null
@@ -198,7 +199,7 @@ function formatTimestamp(isoString, isHistorical = false) {
         try {
             const messageId = Date.now().toString();
             displayedMessageIds.add(messageId);
-            const data_message = {'sender':userLogin, 'content':message, 'message_id':messageId}
+            const data_message = {'actor_id':userLogin, 'content':message, 'message_id':messageId}
             
             // Add to your chat immediately with the ID
             addMessage(data_message);

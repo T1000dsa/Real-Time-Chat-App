@@ -1,7 +1,7 @@
-from typing import Dict, Optional, List, Set, DefaultDict
-from collections import defaultdict
-import uuid
+from typing import Dict, Optional, List
 import logging
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class RoomService:
                 'clients':set()
             }
         
-    async def create_direct(self, actor_id: str, recepient_id: str) -> str:
+    async def create_direct(self, actor_id: str, recepient_id: str):
         if self.directs.get(actor_id) is None:
             self.directs[actor_id] = {}
 
@@ -34,7 +34,7 @@ class RoomService:
             }
         if recepient_id not in self.directs[actor_id]['recepients_id']:
             self.directs[actor_id]['recepients_id'].add(recepient_id)
-
+    
     async def add_message_to_room(self, room_type: str, room_name: str, message: Dict):
         if room_type in self.rooms and room_name in self.rooms[room_type]:
             self.rooms[room_type][room_name]['messages'].append(message)
@@ -67,3 +67,12 @@ class RoomService:
             return False
             
         return True
+    
+    async def leave_direct(self, actor_id: str, recepient_id: str):
+        logger.debug(self.directs)
+        if recepient_id in self.directs[actor_id]:
+            if self.directs[actor_id]['recepients_id']:
+                self.directs[actor_id]['recepients_id'].discard(recepient_id)
+                logger.info(f"User {actor_id} left {recepient_id}")
+
+        logger.info(self.rooms)

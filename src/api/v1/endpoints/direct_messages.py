@@ -1,4 +1,5 @@
-from fastapi import WebSocket, APIRouter,Request, Query
+from fastapi import WebSocket, WebSocketDisconnect, APIRouter,Request, Query
+import json
 import logging
 
 from src.core.config.config import templates
@@ -19,14 +20,15 @@ async def direct_message_endpoint(
     username:str
 ):
     logger.debug(f"{username} - recepient, {user.login} - actor")
-    await chat_manager._room_serv.create_direct(user.login, username)
 
     prepared_data = {
             "title": f"Direct-room with {username}"
         }
 
     add_date = {
-            'user':user
+            'user':user,
+            'recepient':username,
+            'actor':user.id
         }
 
     template_response_body_data = await prepare_template(
@@ -49,9 +51,35 @@ async def direct_message_endpoint_websocket(
 ):
     logger.debug(f"{recepient_id=} {actor_id=}")
 
-    chat_manager._msg_repo.connection_manager.connect(websocket, actor_id)
-    chat_manager._room_serv.rooms[actor_id][recepient_id] = {
-            'name': f"Direct between {actor_id} and {recepient_id}",
-            'password': None,
-            'clients': set()
-        }
+    await chat_manager._msg_repo.connection_manager.connect(websocket, actor_id)
+
+    try:
+        
+        logger.debug(f'{actor_id} tries to join {recepient_id}')
+        await chat_manager._room_serv.create_direct(actor_id, recepient_id)
+        
+        
+        # Main message loop
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            # Add sender info to message
+            message['recepient_id'] = recepient_id
+            message['actor_id'] = actor_id
+            
+            await chat_manager._msg_repo.process_message_direct(
+                chat_manager.session, 
+                chat_manager._db_service,
+                chat_manager._room_serv, 
+                message,
+                actor_id,
+                recepient_id
+            )
+                
+    except WebSocketDisconnect:
+        logger.info(f"User {actor_id} disconnected")
+    finally:
+        logger.info(f"In finally body")
+        await chat_manager._room_serv.leave_direct(actor_id, recepient_id)
+        await chat_manager._msg_repo.connection_manager.disconnect(actor_id, chat_manager._room_serv)
