@@ -42,13 +42,6 @@ class DBService(DBRepo):
         messages_room = room.get('messages')
         logger.debug(f"{room} {messages_room}")
 
-        """if room and messages_room:
-            for message in messages_room:
-                await connection_manager.send_personal_message(
-                    json.dumps(message),
-                    user_id
-                )
-            return"""
         
         messages:list[MessageModel] = await self.receive_messages(
                 session=session,
@@ -68,7 +61,6 @@ class DBService(DBRepo):
                     }
                 await connection_manager.send_personal_message(
                         json.dumps(message_data),
-                        user_id
+                        user_id,
+                        room_service
                     )
-                #room_service.rooms.get(room_type, {}).get(room_id)
-                #room_service.rooms[room_type] = {room_id:{'messages':message_data}}

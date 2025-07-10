@@ -2,7 +2,7 @@
 
 <title>{{ title }}</title>
 {% block content %}
-<h1>{{ title }}</h1>
+<h1>{{ title }} <span id="title"></span></h1>
 <p>Logged in as: {{ user.login }}</p>
 <div id="status">Disconnected</div>
 <div id="chat"></div>
@@ -25,14 +25,18 @@
 
     console.log("Extracted username:", username); // "some-user-name"
 
-    const recepient = "{{ recepient }}";
+    const recipient = "{{ recipient }}";
     const actor = "{{ actor }}";
 
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
 
+    const recipientLogin = "{{ recipient_user.login }}"
+
+    document.getElementById("title").innerHTML = recipientLogin
+
     const params = new URLSearchParams();
-    params.append('recepient_id', recepient);
+    params.append('recipient_id', recipient);
     params.append('actor_id', actor);
 
     
@@ -185,7 +189,7 @@ function formatTimestamp(isoString, isHistorical = false) {
     }
     else {
         msgElement.className = "user-message";
-        msgElement.innerHTML = `[${timestamp}] ${data.sender}: ${data.content}`;
+        msgElement.innerHTML = `[${timestamp}] ${data.actor_id ? data.actor_id : data.recipient_id}: ${data.content}`;
     }
     
     chatDiv.appendChild(msgElement);

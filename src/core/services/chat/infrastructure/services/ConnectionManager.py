@@ -43,13 +43,13 @@ class ConnectionManager:
 
         logger.info(room_serv.rooms)
 
-    async def send_personal_message(self, message: str, user_id: str):
+    async def send_personal_message(self, message: str, user_id: str, room_service:RoomService):
         if user_id in self.active_connections:
             try:
                 await self.active_connections[user_id].send_text(message)
             except Exception as e:
                 logger.error(f"Error sending message to {user_id}: {str(e)}")
-                await self.disconnect(user_id)
+                await self.disconnect(user_id, room_service)
 
     async def broadcast_to_room(self, message: str, room_type: str, room_id: str, room_serv:RoomService, exclude_user: Optional[str] = None):
         logger.debug('In broadcast logic')
@@ -62,4 +62,16 @@ class ConnectionManager:
                         await self.active_connections[user_id].send_text(message)
                     except Exception as e:
                         logger.error(f"Error broadcasting to {user_id}: {str(e)}")
-                        await self.disconnect(user_id)
+                        await self.disconnect(user_id, room_serv)
+
+    async def broadcast_to_direct(self, message: str, actor_id: str, recipient_id: str, room_serv:RoomService, exclude_user: Optional[str] = None):
+        logger.debug(room_serv.rooms)
+        if actor_id in room_serv.directs and recipient_id == room_serv.directs[actor_id]['recipient_id']:
+            for user_id in list(room_serv.directs[actor_id]['recipient_id']):
+                if user_id in self.active_connections and user_id != exclude_user:
+                    try:
+                        logger.debug('Actual sending text')
+                        await self.active_connections[user_id].send_text(message)
+                    except Exception as e:
+                        logger.error(f"Error broadcasting to {user_id}: {str(e)}")
+                        await self.disconnect(user_id, room_serv)

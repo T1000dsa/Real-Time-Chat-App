@@ -71,7 +71,7 @@ class MessageService:
             room_service: RoomService, 
             message_data: Dict, 
             actor_id:str,
-            recepient:str,
+            recipient:str,
             ):
         try:
             # Create full message object
@@ -89,7 +89,7 @@ class MessageService:
                 session,
                 message=f"{actor_id}: {full_message['content']}",
                 room_type='direct',
-                room_id=recepient,
+                room_id=recipient,
                 sender_id=actor_id
             )
             
@@ -97,10 +97,10 @@ class MessageService:
             #await room_service.add_message_to_room(room_type, room_id, full_message)
             
             # Broadcast to room
-            await self.connection_manager.broadcast_to_room(
+            await self.connection_manager.broadcast_to_direct(
                 message=json.dumps(full_message),
-                room_type='direct',
-                room_id=recepient,
+                actor_id=actor_id,
+                recipient_id=recipient,
                 room_serv=room_service,
                 exclude_user=actor_id
             )

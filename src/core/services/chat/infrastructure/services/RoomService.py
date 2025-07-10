@@ -10,7 +10,7 @@ class RoomService:
         # Structure: {room_type: {room_id: {'name': str, 'password': str, 'messages': list, 'clients':{} }}}
         self.rooms: Dict[str, Dict[str, Dict[str, list, set]]] = {}
 
-        # Structure: {actor_id: {recepient_id:str, recepients_id: set(), 'messages':list}
+        # Structure: {actor_id: {recipient_id:str, recipients_id: set(), 'messages':list}
         self.directs: Dict[str, Dict[str, set]] = {}
         
     async def create_room(self, room_type: str, name: str, password: Optional[str] = None) -> str:
@@ -23,17 +23,17 @@ class RoomService:
                 'clients':set()
             }
         
-    async def create_direct(self, actor_id: str, recepient_id: str):
+    async def create_direct(self, actor_id: str, recipient_id: str):
         if self.directs.get(actor_id) is None:
             self.directs[actor_id] = {}
 
         self.directs[actor_id] = {
-                'recepient_id':recepient_id,
+                'recipient_id':recipient_id,
                 'messages': [],
-                'recepients_id':set()
+                'recipients_id':set()
             }
-        if recepient_id not in self.directs[actor_id]['recepients_id']:
-            self.directs[actor_id]['recepients_id'].add(recepient_id)
+        if recipient_id not in self.directs[actor_id]['recipients_id']:
+            self.directs[actor_id]['recipients_id'].add(recipient_id)
     
     async def add_message_to_room(self, room_type: str, room_name: str, message: Dict):
         if room_type in self.rooms and room_name in self.rooms[room_type]:
@@ -56,10 +56,8 @@ class RoomService:
 
     async def validate_room_access(self, room_type: str, room_name: str, password: Optional[str] = None) -> bool:
         room = self.rooms.get(room_type, {})
-        logger.debug(room)
         exact_room = room.get(room_name)
-        logger.debug(exact_room)
-        logger.debug(self.rooms)
+
         if not exact_room:
             return False
             
@@ -68,11 +66,11 @@ class RoomService:
             
         return True
     
-    async def leave_direct(self, actor_id: str, recepient_id: str):
+    async def leave_direct(self, actor_id: str, recipient_id: str):
         logger.debug(self.directs)
-        if recepient_id in self.directs[actor_id]:
-            if self.directs[actor_id]['recepients_id']:
-                self.directs[actor_id]['recepients_id'].discard(recepient_id)
-                logger.info(f"User {actor_id} left {recepient_id}")
+        if recipient_id in self.directs[actor_id]:
+            if self.directs[actor_id]['recipients_id']:
+                self.directs[actor_id]['recipients_id'].discard(recipient_id)
+                logger.info(f"User {actor_id} left {recipient_id}")
 
         logger.info(self.rooms)
