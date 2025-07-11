@@ -16,7 +16,7 @@ async def render_login_form(
     form_data: dict | None = None
 ):
     prepared_data = {
-        "title":"Sigh In",
+        "title":"Sign In",
         "form_data":form_data,
         "errors":errors,
         "url_data":url_email_verification,

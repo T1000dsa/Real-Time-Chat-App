@@ -80,7 +80,7 @@ app.include_router(direct_msg_router)
 
 if __name__ == '__main__':
     uvicorn.run(
-        'main:app',
+        app,
         host=settings.run.host,
         port=settings.run.port,
         reload=not settings.is_prod(),
