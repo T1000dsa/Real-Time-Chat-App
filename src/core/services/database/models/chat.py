@@ -20,3 +20,12 @@ class MessageModel(Base):
 
     #user: Mapped["UserModel"] = relationship()
     deleted_at: Mapped[Optional[datetime]] = mapped_column(default=None)
+
+class DirectModel(Base):
+    __tablename__ = 'directs'
+
+    id: Mapped[int_pk]
+    actor_id: Mapped[str]
+    recipient_id: Mapped[str]
+    message: Mapped[str]
+    created_at: Mapped[created_at]

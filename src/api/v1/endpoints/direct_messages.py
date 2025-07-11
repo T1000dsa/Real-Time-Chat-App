@@ -15,14 +15,12 @@ logger = logging.getLogger(__name__)
 @router.get('/direct-message-with-{username}')
 async def direct_message_endpoint(
     request:Request,
-    chat_manager:HTTPChantManagerDI,
     user:GET_CURRENT_ACTIVE_USER,
     username:str,
     auth:AuthDependency
 ):
     logger.debug(f"{username} - recipient, {user.login} - actor")
     recipient_user = await auth._user._repo.get_user_for_auth(auth.session, username)
-
     prepared_data = {
             "title": f"Direct-room with"
         }
@@ -30,8 +28,6 @@ async def direct_message_endpoint(
     add_date = {
             'user':user,
             'recipient_user':recipient_user,
-            'recipient':username,
-            'actor':user.id
         }
 
     template_response_body_data = await prepare_template(
@@ -51,6 +47,8 @@ async def direct_message_endpoint_websocket(
     chat_manager:WSChantManagerDI,
     recipient_id: str = Query(...),
     actor_id: str = Query(...),
+    recipient:str = Query(...),
+    actor:str = Query(...)
 ):
     logger.debug(f"{recipient_id=} {actor_id=}")
 
@@ -60,16 +58,23 @@ async def direct_message_endpoint_websocket(
         
         logger.debug(f'{actor_id} tries to join {recipient_id}')
         await chat_manager._room_serv.create_direct(actor_id, recipient_id)
-        
-        
+
+        await chat_manager._db_service.load_message_history_direct(
+            chat_manager.session, 
+            chat_manager._msg_repo.connection_manager,
+            chat_manager._room_serv, 
+            recipient_id, 
+            actor_id
+        )
+
         # Main message loop
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
             
             # Add sender info to message
-            message['recipient_id'] = recipient_id
-            message['actor_id'] = actor_id
+            message['recipient_id'] = recipient
+            message['actor_id'] = actor
             
             await chat_manager._msg_repo.process_message_direct(
                 chat_manager.session, 
@@ -77,7 +82,8 @@ async def direct_message_endpoint_websocket(
                 chat_manager._room_serv, 
                 message,
                 actor_id,
-                recipient_id
+                recipient_id,
+                actor,
             )
                 
     except WebSocketDisconnect:

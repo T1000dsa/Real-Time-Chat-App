@@ -10,11 +10,9 @@ class MessabeSchemaBase(BaseModel):
 class MessageSchema(MessabeSchemaBase):
     message: str
 
-class ConnectionTicket(BaseModel):
-    websocket_url: str
-    connection_id: str
-    auth_token: str
-
-class ConnectRequest(BaseModel):
-    user_id: str  # Or any other auth data
-    room_id: str
+class DirectMessage(BaseModel):
+    actor_id:str
+    recipient_id:str
+    
+class DirectScheme(DirectMessage):
+    message: str

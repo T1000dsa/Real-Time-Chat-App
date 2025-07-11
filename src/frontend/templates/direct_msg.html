@@ -25,19 +25,19 @@
 
     console.log("Extracted username:", username); // "some-user-name"
 
-    const recipient = "{{ recipient }}";
-    const actor = "{{ actor }}";
-
     const userId = "{{ user.id }}";
     const userLogin = "{{ user.login }}";
 
-    const recipientLogin = "{{ recipient_user.login }}"
+    const recipientId = "{{ recipient_user.id }}"
+    const recipientLogin= "{{ recipient_user.login }}"
 
     document.getElementById("title").innerHTML = recipientLogin
 
     const params = new URLSearchParams();
-    params.append('recipient_id', recipient);
-    params.append('actor_id', actor);
+    params.append('recipient_id', recipientId);
+    params.append('actor_id', userId);
+    params.append('recipient', recipientLogin);
+    params.append('actor', userLogin);
 
     
     // Connect to specific room
@@ -175,7 +175,8 @@ function formatTimestamp(isoString, isHistorical = false) {
     function addMessage(data) {
     const msgElement = document.createElement('div');
     const timestamp = formatTimestamp(data.timestamp, data.type === 'historical');
-    console.log(timestamp, data.type === 'historical')
+    console.log(userLogin, recipientLogin, 'Check')
+    console.log(userId, recipientId)
         
 
     // Handle all message types
@@ -189,7 +190,13 @@ function formatTimestamp(isoString, isHistorical = false) {
     }
     else {
         msgElement.className = "user-message";
-        msgElement.innerHTML = `[${timestamp}] ${data.actor_id ? data.actor_id : data.recipient_id}: ${data.content}`;
+        if (data.sender) {
+            msgElement.innerHTML = `[${timestamp}] ${data.sender}: ${data.content}`;
+        }
+        else {
+            msgElement.innerHTML = `[${timestamp}] ${userLogin}: ${data.content}`;
+        }
+    
     }
     
     chatDiv.appendChild(msgElement);

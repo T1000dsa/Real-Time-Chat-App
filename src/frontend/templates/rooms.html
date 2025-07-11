@@ -44,7 +44,7 @@
         {% if users %}
             {% for item in users %}
                 {%if item.login!= user.login %}
-                    <a href="/direct-message-with-{{item.id}}">{{item.login}}</a><br>
+                    <a href="/direct-message-with-{{item.login}}">{{item.login}}</a><br>
                 {% endif %}
             {% endfor %}
         {% endif %}

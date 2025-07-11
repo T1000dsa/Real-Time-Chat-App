@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
         await redis_manager.pubsub.close()
         await redis_manager.redis.close()
         await db_helper.dispose()
-        redis_manager.redis.close()
+        await redis_manager.redis.close()
 
         logger.info("✅ Connection pool closed cleanly")
     except Exception as e:

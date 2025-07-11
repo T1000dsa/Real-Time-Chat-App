@@ -71,26 +71,26 @@ class MessageService:
             room_service: RoomService, 
             message_data: Dict, 
             actor_id:str,
-            recipient:str,
+            recipient_id:str,
+            actor:str,
+
             ):
         try:
             # Create full message object
             full_message = {
                 "id": str(uuid.uuid4()),
                 "type": "message",
-                "sender_id": actor_id,
                 "sender": message_data.get('actor_id', 'Anonymous'),
                 "content": message_data.get('content'),
                 "timestamp": datetime.now().isoformat()
             }
             
             # Save to database
-            await DBService.save_message_db(
+            await DBService.save_message_db_direct(
                 session,
-                message=f"{actor_id}: {full_message['content']}",
-                room_type='direct',
-                room_id=recipient,
-                sender_id=actor_id
+                message=f"{actor}: {full_message['content']}",
+                actor_id=actor_id,
+                recipient_id=recipient_id
             )
             
             # Add to room's in-memory history
@@ -100,7 +100,7 @@ class MessageService:
             await self.connection_manager.broadcast_to_direct(
                 message=json.dumps(full_message),
                 actor_id=actor_id,
-                recipient_id=recipient,
+                recipient_id=recipient_id,
                 room_serv=room_service,
                 exclude_user=actor_id
             )
