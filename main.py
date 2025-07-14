@@ -7,6 +7,8 @@ from logging.config import dictConfig
 import uvicorn
 import logging
 
+
+from src.core.exceptions.except_catcher import not_found_exception_handler
 from src.core.config.config import settings, media_root, static_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
@@ -14,6 +16,7 @@ from src.core.middleware.middleware import init_token_refresh_middleware
 from src.core.services.cache.redis import ConnectionManager as redis_conmanager
 from src.core.services.chat.infrastructure.services.RoomService import RoomService
 from src.core.services.chat.infrastructure.services.ConnectionManager import ConnectionManager
+
 
 from src.api.v1.endpoints.healthcheck import router as heath_router
 from src.api.v1.endpoints.main_router import router as main_router
@@ -77,6 +80,10 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(chat_router)
 app.include_router(direct_msg_router)
+
+app.add_exception_handler(404, not_found_exception_handler)
+
+
 
 if __name__ == '__main__':
     uvicorn.run(
