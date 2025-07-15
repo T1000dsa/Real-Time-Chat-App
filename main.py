@@ -24,6 +24,8 @@ from src.api.v1.auth.authentication import router as auth_router
 from src.api.v1.endpoints.chat import router as chat_router
 from src.api.v1.endpoints.direct_messages import router as direct_msg_router
 from src.api.v1.auth.profile_managment import router as profile_router
+from src.api.v1.auth.webauthn import router as foreign_api_router 
+from src.api.v1.auth.MFA import router as MFA_router
 
 
 @asynccontextmanager
@@ -52,7 +54,6 @@ async def lifespan(app: FastAPI):
         await redis_manager.pubsub.close()
         await redis_manager.redis.close()
         await db_helper.dispose()
-        await redis_manager.redis.close()
 
         logger.info("✅ Connection pool closed cleanly")
     except Exception as e:
@@ -80,9 +81,10 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(chat_router)
 app.include_router(direct_msg_router)
+app.include_router(foreign_api_router)
+app.include_router(MFA_router)
 
 app.add_exception_handler(404, not_found_exception_handler)
-
 
 
 if __name__ == '__main__':

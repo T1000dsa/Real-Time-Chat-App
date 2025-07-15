@@ -32,4 +32,5 @@ def disable_inactive_users_task(self):
 async def _process_users_batch():
     """Process users in a managed session"""
     async with db_helper.async_session() as session:
-        return await disable_users(session)
+        await disable_users(session)
+        return True

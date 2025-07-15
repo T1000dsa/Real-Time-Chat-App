@@ -40,7 +40,7 @@ def test_user(i):
         password_field.send_keys(user_data["password"])
         submit_button.click()
 
-        driver.get("http://localhost:8000/v1/logout")
+        #driver.get("http://localhost:8000/v1/logout")
 
         driver.quit()
 

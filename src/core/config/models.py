@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator, SecretStr
 from datetime import timedelta
-from typing import Any, Union
+from typing import Union
 
 
 class RunConfig(BaseModel):

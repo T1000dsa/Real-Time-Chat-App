@@ -99,8 +99,6 @@ class DBService(DBRepo):
             )
             
         for msg in messages:
-            logger.debug(f"{recipient_id=} {actor_id=}")
-            logger.debug(f"{msg.recipient_id=} {msg.actor_id=}")
             if recipient_id == msg.recipient_id or recipient_id == msg.actor_id:
                 message_data = {
                         "id": str(msg.id),
@@ -114,3 +112,5 @@ class DBService(DBRepo):
                         actor_id,
                         room_service
                     )
+            else:
+                continue
