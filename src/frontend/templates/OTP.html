@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% if errors %}
+    <div class="alert alert-danger">{{ errors }}</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    <!-- No need for template_action since we're posting to same URL -->
+    
+    <!-- OPT Field -->
+    <label for="OPT">OPT:</label>
+    <input type="text" id="OPT" name="OPT" 
+           value="{{ form_data.OPT if form_data else '' }}" required>
+
+    <!-- Submit Button -->
+    <button type="submit">Enable/Disable MFA</button>
+</form>
+
+{% endblock %}

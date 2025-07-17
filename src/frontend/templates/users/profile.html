@@ -22,13 +22,31 @@
     </form>
     
     <hr>
+
     <p>Join Date: {{ user.join_date }}</p>
     {% if user.is_active %}
         <p>User {{user.login}} is active now</p>
     {% else %}
         <p>Last Login: {{ user.last_time_login }}</p>
     {% endif %}
+
+    {% if user.otp_enabled %}
+        <form method="post" action="{{main_prefix}}/auth/mfa/disable">
+            <button type="submit">Disable MFA</button>
+        </form>
+    {% else %}
+        <form method="post" action="{{main_prefix}}/auth/mfa/enable">
+            <button type="submit">Enable MFA</button>
+        </form>
+    {% endif %}
+
+ 
+    <form method="get" action="{{main_prefix}}/auth/otp/generate">
+        <button type="submit">Get new opt-code?</button>
+    </form>
+
     <hr>
     <a href="{{password_change_url}}">Change password</a>
+
 {% endif %}
 {% endblock %}

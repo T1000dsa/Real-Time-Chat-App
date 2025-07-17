@@ -1,31 +1,37 @@
-from fastapi import APIRouter, Response, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Response, HTTPException, Form, Request
 from typing import Optional
-from uuid import uuid4
 import logging
 import pyotp
 import io
 import qrcode
 
-from src.core.dependencies.auth_injection import GET_CURRENT_USER
+from src.core.dependencies.auth_injection import GET_CURRENT_USER, AuthDependency
+from src.api.v1.utils.render_auth import render_mfa_form
+from src.core.config.config import main_prefix
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(prefix=main_prefix)
 
 
 async def is_otp_correct(otp: Optional[str], secret: str) -> bool:
     return pyotp.TOTP(secret).now() == otp
 
 @router.get("/auth/otp/generate")
-def generate_qr_code(user: GET_CURRENT_USER):
-    # Generate a more appropriate OTP secret
+async def generate_qr_code(
+    user: GET_CURRENT_USER,
+    auth_service: AuthDependency
+):
     secret = pyotp.random_base32()
     
-    # Store this secret with the user account (pseudo-code)
-    # user.otp_secret = secret
-    # await user.save()
+    # Store the secret (but don't enable MFA yet)
+    user.otp_secret = secret
+    auth_service.session.add(user)
+
+    await auth_service.session.commit()
+    await auth_service.session.refresh(user)
     
+
     totp = pyotp.TOTP(secret)
     try:
         qr_code = qrcode.make(
@@ -41,3 +47,57 @@ def generate_qr_code(user: GET_CURRENT_USER):
     except Exception as e:
         logger.error(f"QR code generation failed: {e}")
         raise HTTPException(status_code=500, detail="QR code generation failed")
+    
+    
+@router.post("/auth/mfa/enable")
+async def enable_mfa(
+    request: Request,
+    user: GET_CURRENT_USER,
+    auth_service: AuthDependency,
+    OPT: str = Form(None)
+):
+    """Verify OTP and enable MFA for user"""
+    if not OPT:
+        return await render_mfa_form(request)
+    
+    logger.debug(f"{user.otp_secret=} {OPT=}")
+    logger.debug(pyotp.TOTP(user.otp_secret).verify(OPT, valid_window=10))
+    
+    if not user.otp_secret:
+        raise HTTPException(status_code=400, detail="Generate OTP secret first")
+    
+
+    
+    if not pyotp.TOTP(user.otp_secret).verify(OPT, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid OTP code")
+    
+    # Enable MFA for the user
+    user.otp_enabled = True
+    auth_service.session.add(user)
+
+    await auth_service.session.commit()
+    await auth_service.session.refresh(user)
+    
+    return {"message": "MFA enabled successfully"}
+
+
+@router.post("/auth/mfa/disable")
+async def disable_mfa(
+    user: GET_CURRENT_USER,
+    auth_service: AuthDependency,
+    password: str = Form(...)
+):
+    """Disable MFA for user (requires password confirmation)"""
+    if not await auth_service.verify_password(user.login, password):
+        raise HTTPException(status_code=400, detail="Invalid password")
+    
+    # Disable MFA and clear secret
+    user.otp_enabled = False
+    user.otp_secret = None
+    
+    auth_service.session.add(user)
+
+    await auth_service.session.commit()
+    await auth_service.session.refresh(user)
+    
+    return {"message": "MFA disabled successfully"}

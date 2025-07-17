@@ -30,6 +30,8 @@ class UserModel(Base):
     is_active:Mapped[bool] = mapped_column(default=False)
     is_superuser: Mapped[bool] = mapped_column(default=False)
     photo: Mapped[str] = mapped_column(default=default_picture_none, nullable=True)
+    otp_secret: Mapped[Optional[str]] = mapped_column(default=None)
+    otp_enabled: Mapped[bool] = mapped_column(default=False, nullable=True)
 
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         back_populates="user",

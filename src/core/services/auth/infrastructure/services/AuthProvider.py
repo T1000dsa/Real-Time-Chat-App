@@ -2,7 +2,6 @@ from fastapi import Response, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from jose.exceptions import ExpiredSignatureError
 from datetime import datetime, timezone
 import uuid
 import logging
@@ -46,7 +45,7 @@ class AuthProvider(AuthRepository):
 
     @time_checker
     #@exception_handler
-    async def authenticate_user(self, login, password) -> dict:
+    async def authenticate_user(self, login, password, otp_code) -> dict:
         """
         Three-step authentication. 
         1. we search users in db, if we find them, return back to authenticate_user UserModel.
@@ -77,6 +76,8 @@ class AuthProvider(AuthRepository):
         user_data = {'sub':str(user.id)}
         tokens = await self._token.create_tokens(user_data)
         logger.debug(f'tokens created successfully')
+
+        
 
         # activate user
         try:

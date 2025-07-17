@@ -154,8 +154,9 @@ async def revoke_refresh_token(session: AsyncSession, token:str) -> None:
         result = await session.execute(stm)
         result = result.scalar_one_or_none()
         logger.debug(f"{result=}")
-        result.revoked = True
-        await session.commit()
+        if result:
+            result.revoked = True
+            await session.commit()
 
     except Exception as err:
         logger.critical(f'Something unpredictable: {err}')

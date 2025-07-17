@@ -4,11 +4,12 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import logging
+import pyotp
 
 from src.core.schemas.user import UserSchema
 from src.core.config.config import main_prefix, settings
 from src.core.dependencies.auth_injection import AuthDependency
-from src.api.v1.utils.render_auth import render_login_form, render_register_form
+from src.api.v1.utils.render_auth import render_login_form, render_register_form, render_mfa_form
 from src.utils.time_check import time_checker
 from src.core.services.cache.auth_redis import check_login_attempts
 
@@ -29,10 +30,11 @@ async def handle_login(
     auth_service: AuthDependency,
     login: str = Form(...),
     password: str = Form(...),
+    otp_code: str = Form(None)
 ):
     """Handle POST requests for login form submission"""
 
-    form_data = {'login': login, 'password': password}
+    form_data = {'login': login, 'password': password, 'otp_code':otp_code}
     attempts_expired = await check_login_attempts(user_identifier=login)
 
     if attempts_expired == False:
@@ -45,7 +47,8 @@ async def handle_login(
     try:
         tokens = await auth_service.authenticate_user(
             login=login,
-            password=password
+            password=password,
+            otp_code=otp_code
         )
         
         if not tokens:
@@ -55,7 +58,21 @@ async def handle_login(
                 form_data=form_data
             )
         
-        logger.debug(type(tokens))
+        user = await auth_service._user._repo.get_user_for_auth(auth_service.session, login)
+
+        logger.debug(user.otp_enabled)
+        
+        if user.otp_enabled:
+            if not otp_code:
+                # Render a form asking for OTP code
+                return await render_mfa_form(request, login=login)
+            
+            if not pyotp.TOTP(user.otp_secret).verify(otp_code, valid_window=1):
+                return await render_login_form(
+                    request,
+                    errors="Invalid OTP code",
+                    form_data={'login': login}
+                )
         
         response = RedirectResponse(url='/', status_code=302)
         response = await auth_service.set_cookies(response=response, tokens=tokens)

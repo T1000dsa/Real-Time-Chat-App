@@ -66,7 +66,8 @@ async def render_profile_form(request: Request, user: UserModel):
     
     add_data = {
         "user": user,
-        "password_change_url":f'{main_prefix}/password_change'
+        "password_change_url":f'{main_prefix}/password_change',
+        "main_prefix":main_prefix
     }
     
     template_response_body_data = await prepare_template(
@@ -77,6 +78,23 @@ async def render_profile_form(request: Request, user: UserModel):
     response = templates.TemplateResponse(
         request=request,
         name='users/profile.html',
+        context=template_response_body_data
+        )
+    return response
+
+async def render_mfa_form(request: Request):
+    prepared_data = {
+        "title": "Login",
+        "content":"Please, provide OTP-code"
+    }
+    
+    template_response_body_data = await prepare_template(
+        data=prepared_data,
+    )
+
+    response = templates.TemplateResponse(
+        request=request,
+        name='OTP.html',
         context=template_response_body_data
         )
     return response
