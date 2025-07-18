@@ -29,12 +29,16 @@
     {% else %}
         <p>Last Login: {{ user.last_time_login }}</p>
     {% endif %}
+    
 
     {% if user.otp_enabled %}
         <form method="post" action="{{main_prefix}}/auth/mfa/disable">
             <button type="submit">Disable MFA</button>
         </form>
     {% else %}
+        <div>
+            Warning! MFA is disabled! For better account protection you should to enable MFA
+        </div>
         <form method="post" action="{{main_prefix}}/auth/mfa/enable">
             <button type="submit">Enable MFA</button>
         </form>

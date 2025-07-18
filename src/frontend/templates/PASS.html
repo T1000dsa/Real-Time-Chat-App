@@ -9,13 +9,13 @@
 <form method="post" enctype="multipart/form-data">
     <!-- No need for template_action since we're posting to same URL -->
     
-    <!-- OPT Field -->
-    <label for="OPT">OPT:</label>
-    <input type="text" id="OPT" name="OPT" 
-           value="{{ form_data.OPT if form_data else '' }}" required>
+    <!-- password Field -->
+    <label for="password">Password:</label>
+    <input type="text" id="password" name="password" 
+           value="{{ form_data.password if form_data else '' }}" required>
 
     <!-- Submit Button -->
-    <button type="submit">Enable MFA</button>
+    <button type="submit">Disable MFA</button>
 </form>
 
 {% endblock %}

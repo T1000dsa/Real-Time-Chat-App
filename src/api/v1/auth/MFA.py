@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Response, HTTPException, Form, Request
+from fastapi.responses import RedirectResponse
 from typing import Optional
 import logging
 import pyotp
@@ -6,7 +7,7 @@ import io
 import qrcode
 
 from src.core.dependencies.auth_injection import GET_CURRENT_USER, AuthDependency
-from src.api.v1.utils.render_auth import render_mfa_form
+from src.api.v1.utils.render_auth import render_mfa_form, render_pass_form
 from src.core.config.config import main_prefix
 
 
@@ -83,12 +84,16 @@ async def enable_mfa(
 
 @router.post("/auth/mfa/disable")
 async def disable_mfa(
+    request: Request,
     user: GET_CURRENT_USER,
     auth_service: AuthDependency,
-    password: str = Form(...)
+    password: str = Form(None)
 ):
     """Disable MFA for user (requires password confirmation)"""
-    if not await auth_service.verify_password(user.login, password):
+    if not password:
+        return await render_pass_form(request)
+    
+    if not await auth_service._hash.verify_password(password, user.password):
         raise HTTPException(status_code=400, detail="Invalid password")
     
     # Disable MFA and clear secret
@@ -99,5 +104,7 @@ async def disable_mfa(
 
     await auth_service.session.commit()
     await auth_service.session.refresh(user)
+
+    response = RedirectResponse(url='/', status_code=302)
     
     return {"message": "MFA disabled successfully"}

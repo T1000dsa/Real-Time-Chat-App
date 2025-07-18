@@ -98,3 +98,21 @@ async def render_mfa_form(request: Request):
         context=template_response_body_data
         )
     return response
+
+
+async def render_pass_form(request: Request):
+    prepared_data = {
+        "title": "Login",
+        "content":"Please, provide your password"
+    }
+    
+    template_response_body_data = await prepare_template(
+        data=prepared_data,
+    )
+
+    response = templates.TemplateResponse(
+        request=request,
+        name='PASS.html',
+        context=template_response_body_data
+        )
+    return response
