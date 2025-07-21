@@ -85,7 +85,7 @@ async def render_profile_form(request: Request, user: UserModel):
 async def render_mfa_form(request: Request):
     prepared_data = {
         "title": "Login",
-        "content":"Please, provide OTP-code"
+        "content":"Please, provide OTP-code. QR-code was sent on your email, please check!"
     }
     
     template_response_body_data = await prepare_template(

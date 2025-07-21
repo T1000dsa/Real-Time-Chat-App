@@ -63,6 +63,7 @@ async def password_change(
     errors: str = None
 ):
     user = None
+    descr = "You have been successfully provided email, now check your email for reset password link"
     
     if curr_user is None:
         user = await auth._repo.get_user_for_auth_by_email(auth.session, email)
@@ -80,14 +81,15 @@ async def password_change(
                 # Trying to send verificate-link toward urer email
                 await auth._email.send_verification_email(email)
 
-                return await render_after_send_email(request, errors)
+                return await render_after_send_email(request, errors, descr)
             # in else case
             else:
                 await auth._email.email_verification(auth.session, email, auth._repo)
 
                 await auth._email.send_verification_email(email)
 
-                return await render_after_send_email(request, errors)
+
+                return await render_after_send_email(request, errors, descr)
 
         except KeyError as err:
             logger.error(err)

@@ -1,9 +1,10 @@
-import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from sqlalchemy.ext.asyncio import AsyncSession
-import logging
 from typing import Optional
+import smtplib
+import logging
+import base64
 
 from src.core.services.auth.domain.interfaces import EmailRepo
 from src.utils.time_check import time_checker
@@ -68,6 +69,25 @@ class EmailService(EmailRepo):
         subject = "Please verify your email address"
         body = f"Click this link to verify your email: {verification_url}"
         html_body = f"""<html><body><p>Click <a href="{verification_url}">here</a> to verify.</p></body></html>"""
+        return await self.send_email(recipient, subject, body, html_body)
+    
+    @time_checker
+    async def send_generated_qrcode(self, recipient: str, image_data: str) -> bool:
+        subject = "Please scan this QR code"
+        body = f"Scan this QR code for MFA for {EXTERNAL_BASE_URL}"
+        
+        # Create proper HTML with embedded image
+        html_body = f"""
+        <html>
+            <body>
+                <p>Scan this QR code for MFA:</p>
+                <img src="data:image/png;base64,{image_data}" 
+                    alt="QR Code" 
+                    style="display:block; width:200px; height:200px;">
+            </body>
+        </html>
+        """
+        
         return await self.send_email(recipient, subject, body, html_body)
     
     async def email_verification(self, session: AsyncSession, email: str,  user_repo: UserService, user: Optional[UserModel] = None):

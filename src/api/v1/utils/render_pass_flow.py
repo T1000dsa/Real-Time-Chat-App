@@ -92,11 +92,12 @@ async def render_password_reset(
 @time_checker
 async def render_after_send_email(
     request: Request, 
-    errors:str = None
+    errors:str = None,
+    descr:str = None
 ):
     prepared_data = {
         "title": "Check your email!",
-        "description":"You have been successfully provided email, now check your email for reset password link",
+        "description":descr,
         "errors":errors
     }
     
