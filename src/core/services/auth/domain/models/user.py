@@ -32,6 +32,7 @@ class UserModel(Base):
     photo: Mapped[str] = mapped_column(default=default_picture_none, nullable=True)
     otp_secret: Mapped[Optional[str]] = mapped_column(default=None)
     otp_enabled: Mapped[bool] = mapped_column(default=False, nullable=True)
+    qrcode_link: Mapped[str] = mapped_column(default=None, nullable=True)
 
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         back_populates="user",

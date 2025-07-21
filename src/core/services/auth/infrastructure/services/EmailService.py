@@ -72,21 +72,20 @@ class EmailService(EmailRepo):
         return await self.send_email(recipient, subject, body, html_body)
     
     @time_checker
-    async def send_generated_qrcode(self, recipient: str, image_data: str) -> bool:
+    async def send_generated_qrcode(self, recipient: str, image_link: str) -> bool:
+
         subject = "Please scan this QR code"
         body = f"Scan this QR code for MFA for {EXTERNAL_BASE_URL}"
         
-        # Create proper HTML with embedded image
+        # Create proper HTML with embedded image  # <img src="data:image/png;base64,{image}" width:200px; height:200px;">
         html_body = f"""
         <html>
             <body>
-                <p>Scan this QR code for MFA:</p>
-                <img src="data:image/png;base64,{image_data}" 
-                    alt="QR Code" 
-                    style="display:block; width:200px; height:200px;">
+                <a href="{image_link}">Link to the qr code</a>
             </body>
         </html>
         """
+        logger.debug(f"{html_body=}")
         
         return await self.send_email(recipient, subject, body, html_body)
     

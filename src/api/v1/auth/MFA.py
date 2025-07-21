@@ -9,7 +9,8 @@ import base64
 
 from src.core.dependencies.auth_injection import GET_CURRENT_USER, AuthDependency
 from src.api.v1.utils.render_auth import render_mfa_form, render_pass_form
-from src.core.config.config import main_prefix
+from src.api.v1.utils.render_MFA import render_qr_code
+from src.core.config.config import main_prefix, EXTERNAL_BASE_URL
 from src.api.v1.utils.render_pass_flow import (
     render_after_send_email
     )
@@ -51,7 +52,10 @@ async def generate_qr_code(
     except Exception as e:
         logger.error(f"QR code generation failed: {e}")
         raise HTTPException(status_code=500, detail="QR code generation failed")
-    
+
+@router.get('/auth/mfa/get_qrcode')
+async def get_qrcode(request: Request, user:GET_CURRENT_USER):
+    return await render_qr_code(request, user.qrcode_link)
     
 @router.post("/auth/mfa/enable")
 async def enable_mfa(
@@ -62,26 +66,22 @@ async def enable_mfa(
     errors:str = None
 ):
     """Verify OTP and enable MFA for user"""
-    image = None
     descr = 'Check your email for qrcode!'
 
-    try:
+
+    if not user.qrcode_link: # adjust
         image_base64 = await generate_qr_code(user, auth_service)
-        
-         # Trying to send verificate-link toward urer email
-        await auth_service._email.send_generated_qrcode(user.email, image_base64)
+
+        user.qrcode_link = image_base64
+
+        auth_service.session.add(user)
+        await auth_service.session.commit()
+        await auth_service.session.refresh(user)
+
+        await auth_service._email.send_generated_qrcode(user.email, f'{EXTERNAL_BASE_URL}/v1/auth/mfa/get_qrcode')
 
         return await render_after_send_email(request, errors, descr)
  
-    except Exception as err:
-        logger.error(err)
-
-    if user:
-        # Trying to send verificate-link toward urer email
-        await auth_service._email.send_generated_qrcode(user.email, image)
-
-        return await render_after_send_email(request, errors, descr)
-    
     if not OPT:
         return await render_mfa_form(request)
     
@@ -129,6 +129,5 @@ async def disable_mfa(
     await auth_service.session.commit()
     await auth_service.session.refresh(user)
 
-    response = RedirectResponse(url='/', status_code=302)
     
     return {"message": "MFA disabled successfully"}

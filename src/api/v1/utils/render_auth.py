@@ -82,6 +82,7 @@ async def render_profile_form(request: Request, user: UserModel):
         )
     return response
 
+@time_checker
 async def render_mfa_form(request: Request):
     prepared_data = {
         "title": "Login",
@@ -99,7 +100,7 @@ async def render_mfa_form(request: Request):
         )
     return response
 
-
+@time_checker
 async def render_pass_form(request: Request):
     prepared_data = {
         "title": "Login",
