@@ -45,7 +45,7 @@ class AuthProvider(AuthRepository):
 
     @time_checker
     #@exception_handler
-    async def authenticate_user(self, login, password, otp_code) -> dict:
+    async def authenticate_user(self, login, password) -> dict:
         """
         Three-step authentication. 
         1. we search users in db, if we find them, return back to authenticate_user UserModel.
@@ -55,6 +55,7 @@ class AuthProvider(AuthRepository):
         5. send back tokens.
         """
         logger.debug(f'{login} tries to authorize...')
+        
         # Fisrt step
         user:UserModel = await self._repo.get_user_for_auth(self.session, login)
         if not user:
@@ -77,7 +78,6 @@ class AuthProvider(AuthRepository):
         tokens = await self._token.create_tokens(user_data)
         logger.debug(f'tokens created successfully')
 
-        
 
         # activate user
         try:

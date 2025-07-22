@@ -2,8 +2,7 @@ from fastapi import Request
 import logging 
 
 from src.utils.prepared_response import prepare_template
-from src.core.config.config import templates, main_prefix, url_email_verification
-from src.core.services.auth.domain.models.user import UserModel
+from src.core.config.config import templates
 from src.utils.time_check import time_checker
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@
 {% if errors %}
     <div class="alert alert-danger">{{ errors }}</div>
 {% endif %}
-
+{{ content }}<br>
 <form method="post" enctype="multipart/form-data">
     <!-- No need for template_action since we're posting to same URL -->
     

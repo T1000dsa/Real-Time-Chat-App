@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException, Query
 from fastapi.requests import Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import logging
@@ -8,7 +8,7 @@ import pyotp
 
 from src.core.schemas.user import UserSchema
 from src.core.config.config import main_prefix, settings
-from src.core.dependencies.auth_injection import AuthDependency
+from src.core.dependencies.auth_injection import AuthDependency, GET_CURRENT_ACTIVE_USER
 from src.api.v1.utils.render_auth import render_login_form, render_register_form, render_mfa_form
 from src.utils.time_check import time_checker
 from src.core.services.cache.auth_redis import check_login_attempts
@@ -16,6 +16,44 @@ from src.core.services.cache.auth_redis import check_login_attempts
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix=main_prefix, tags=['auth'])
+
+@router.get('/MFA_login')
+async def get_MFA_login(
+    request:Request,
+    ):
+    return await render_mfa_form(request)
+            
+@router.post('/MFA_login')
+async def get_MFA_login(
+    request:Request,
+    auth_service: AuthDependency,
+    login = Query(None),
+    password = Query(None),
+    otp_code: str = Form(None),
+    
+    ):
+    logger.debug(f"{otp_code=} {login=} {password=}")
+    logger.debug(otp_code==None)
+
+    tokens = await auth_service.authenticate_user(
+            login=login,
+            password=password
+        )
+    
+    user = await auth_service._user._repo.get_user_for_auth(auth_service.session, login)
+    
+    if not otp_code:
+        return await render_mfa_form(request)
+            
+    if not pyotp.TOTP(user.otp_secret).verify(otp_code, valid_window=1):
+        return await render_login_form(
+                    request,
+                    errors="Invalid OTP code"
+                )
+    
+    response = RedirectResponse(url='/', status_code=302)
+    response = await auth_service.set_cookies(response=response, tokens=tokens)
+    return response
 
 @time_checker
 @router.get("/login")
@@ -29,13 +67,14 @@ async def handle_login(
     request: Request,
     auth_service: AuthDependency,
     login: str = Form(...),
-    password: str = Form(...),
-    otp_code: str = Form(None)
+    password: str = Form(...)
 ):
     """Handle POST requests for login form submission"""
 
-    form_data = {'login': login, 'password': password, 'otp_code':otp_code}
+    form_data = {'login': login, 'password': password}
     attempts_expired = await check_login_attempts(user_identifier=login)
+
+    logger.debug(form_data)
 
     if attempts_expired == False:
         return await render_login_form(
@@ -47,8 +86,7 @@ async def handle_login(
     try:
         tokens = await auth_service.authenticate_user(
             login=login,
-            password=password,
-            otp_code=otp_code
+            password=password
         )
         
         if not tokens:
@@ -59,25 +97,16 @@ async def handle_login(
             )
         
         user = await auth_service._user._repo.get_user_for_auth(auth_service.session, login)
-
-        logger.debug(user.otp_enabled)
         
         if user.otp_enabled:
-            if not otp_code:
-                # Render a form asking for OTP code
-                return await render_mfa_form(request, login=login)
-            
-            if not pyotp.TOTP(user.otp_secret).verify(otp_code, valid_window=1):
-                return await render_login_form(
-                    request,
-                    errors="Invalid OTP code",
-                    form_data={'login': login}
-                )
+            response = RedirectResponse(url=f'{main_prefix}/MFA_login?login={login}&password={password}', status_code=302)
+            return response
         
-        response = RedirectResponse(url='/', status_code=302)
-        response = await auth_service.set_cookies(response=response, tokens=tokens)
-        return response
-    
+        else:
+            response = RedirectResponse(url='/', status_code=302)
+            response = await auth_service.set_cookies(response=response, tokens=tokens)
+            return response
+        
     except HTTPException as err:
         logger.error(f"Login failed: {err}")
         if hasattr(err, 'detail'):
@@ -101,6 +130,7 @@ async def handle_login(
             errors=f"{detail}. Attempts left {settings.redis.cache_auth_attempts-attempts_expired[1] if attempts_expired else ''}", 
             form_data=form_data
         )
+    
 
 @time_checker
 @router.get("/register")
