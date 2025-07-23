@@ -93,7 +93,8 @@ async def render_password_reset(
 async def render_after_send_email(
     request: Request, 
     errors:str = None,
-    descr:str = None
+    descr:str = None,
+    form_data:dict = {}
 ):
     prepared_data = {
         "title": "Check your email!",
@@ -101,9 +102,13 @@ async def render_after_send_email(
         "errors":errors
     }
     
+    add_data = {
+        "form_data":form_data
+    }
     
     template_response_body_data = await prepare_template(
-        data=prepared_data
+        data=prepared_data,
+        additional_data=add_data
     )
 
     response = templates.TemplateResponse(

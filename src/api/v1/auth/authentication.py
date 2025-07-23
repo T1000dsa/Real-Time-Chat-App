@@ -29,11 +29,11 @@ async def get_MFA_login(
     auth_service: AuthDependency,
     login = Query(None),
     password = Query(None),
-    otp_code: str = Form(None),
+    OPT: str = Form(None),
     
     ):
-    logger.debug(f"{otp_code=} {login=} {password=}")
-    logger.debug(otp_code==None)
+    logger.debug(f"{OPT=} {login=} {password=}")
+    logger.debug(OPT==None)
 
     tokens = await auth_service.authenticate_user(
             login=login,
@@ -42,10 +42,10 @@ async def get_MFA_login(
     
     user = await auth_service._user._repo.get_user_for_auth(auth_service.session, login)
     
-    if not otp_code:
+    if not OPT:
         return await render_mfa_form(request)
             
-    if not pyotp.TOTP(user.otp_secret).verify(otp_code, valid_window=1):
+    if not pyotp.TOTP(user.otp_secret).verify(OPT, valid_window=1):
         return await render_login_form(
                     request,
                     errors="Invalid OTP code"

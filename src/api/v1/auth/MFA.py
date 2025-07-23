@@ -10,7 +10,7 @@ import base64
 from src.core.dependencies.auth_injection import GET_CURRENT_USER, AuthDependency
 from src.api.v1.utils.render_auth import render_mfa_form, render_pass_form
 from src.api.v1.utils.render_MFA import render_qr_code
-from src.core.config.config import main_prefix, EXTERNAL_BASE_URL
+from src.core.config.config import main_prefix, EXTERNAL_BASE_URL, profile_prefix
 from src.api.v1.utils.render_pass_flow import (
     render_after_send_email
     )
@@ -67,6 +67,7 @@ async def enable_mfa(
 ):
     """Verify OTP and enable MFA for user"""
     descr = 'Check your email for qrcode!'
+    proceed_link = f'{main_prefix}/auth/mfa/enable'
 
 
     if not user.qrcode_link: # adjust
@@ -80,7 +81,7 @@ async def enable_mfa(
 
         await auth_service._email.send_generated_qrcode(user.email, f'{EXTERNAL_BASE_URL}/v1/auth/mfa/get_qrcode')
 
-        return await render_after_send_email(request, errors, descr)
+        return await render_after_send_email(request, errors, descr, {"url":proceed_link, "title":'Proceed MFA?'})
  
     if not OPT:
         return await render_mfa_form(request)
@@ -103,7 +104,8 @@ async def enable_mfa(
     await auth_service.session.commit()
     await auth_service.session.refresh(user)
     
-    return {"message": "MFA enabled successfully"}
+    response = RedirectResponse(url=f'{EXTERNAL_BASE_URL}{profile_prefix}', status_code=302)
+    return response
 
 
 @router.post("/auth/mfa/disable")
@@ -123,6 +125,7 @@ async def disable_mfa(
     # Disable MFA and clear secret
     user.otp_enabled = False
     user.otp_secret = None
+    user.qrcode_link = None
     
     auth_service.session.add(user)
 
@@ -130,4 +133,5 @@ async def disable_mfa(
     await auth_service.session.refresh(user)
 
     
-    return {"message": "MFA disabled successfully"}
+    response = RedirectResponse(url=f'{EXTERNAL_BASE_URL}{profile_prefix}', status_code=302)
+    return response

@@ -9,6 +9,13 @@
     <a href="{{ url_data.url }}">{{url_data.title}}</a><br>
 {% endif %}
 
+{% if form_data %}
+<form method="post" enctype="multipart/form-data">
+
+    <button type="submit">Proceed MFA</button>
+</form>
+{% endif %}
+
 {% if image %}
     <img src="data:image/png;base64,{{image}}" width="200" height="200" alt="QR Code">
 {% endif %}

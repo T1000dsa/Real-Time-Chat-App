@@ -88,8 +88,13 @@ media_root = settings.media_root
 default_picture_none = settings.default_picture_none
 max_file_size = 10 * 1024**2 # 10 mb
 
-main_prefix = settings.prefix.api_data.prefix
 EXTERNAL_BASE_URL="http://localhost:8000"
+main_prefix = settings.prefix.api_data.prefix
+
+login_prefix = f'{main_prefix}/login'
+profile_prefix = f'{main_prefix}/profile'
+reg_prefix = f'{main_prefix}/register'
+
 
 #temporary placement
 url_pass_changer = {'title':'password reset', 'url':f'{EXTERNAL_BASE_URL}{main_prefix}/reset_password'}
