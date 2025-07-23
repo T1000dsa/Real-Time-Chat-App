@@ -69,7 +69,8 @@ services:
 
   celery_worker:
     build: .
-    command: celery -A src.core.services.tasks.celery worker --pool=solo --loglevel=info
+    user: "1000:1000"  # Run as UID 1000 (non-root)
+    command: bash -c "celery worker --help & celery -A src.core.services.tasks.celery_app worker --loglevel=INFO --pool=prefork"
     volumes:
       - .:/app
     depends_on:
@@ -77,7 +78,8 @@ services:
 
   celery_beat:
     build: .
-    command: celery -A src.core.services.tasks.celery beat --loglevel=info
+    user: "1000:1000"  # Run as UID 1000 (non-root)
+    command: celery -A src.core.services.tasks.celery_app beat --loglevel=info
     volumes:
       - .:/app
     depends_on:

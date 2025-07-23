@@ -4,13 +4,13 @@ from email.mime.multipart import MIMEMultipart
 import logging
 from typing import Optional
 
-from src.core.services.tasks.celery import celery
+from src.core.services.tasks.celery_app import app
 from src.core.config.config import settings
 
 
 logger = logging.getLogger(__name__)
 
-@celery.task(max_retries=3)
+@app.task(max_retries=3)
 def send_email_task(recipient: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
     """Celery task for sending emails"""
     logger.debug('in celery task send_email_task')

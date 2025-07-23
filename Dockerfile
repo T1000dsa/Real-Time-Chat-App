@@ -1,4 +1,4 @@
-FROM python:latest
+FROM python:3.11-slim 
 
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
@@ -21,6 +21,8 @@ RUN poetry config virtualenvs.create false && \
 
 # Copy the rest of the files
 COPY . .
+
+RUN pip install celery-pool-asyncio
 
 COPY .env .env
 

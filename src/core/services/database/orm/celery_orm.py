@@ -13,13 +13,15 @@ logger = logging.getLogger(__name__)
 @time_checker
 async def disable_users(session: AsyncSession):
     try:
-        # Get all active users
+        disabled_count = 0
+
         users = await session.execute(
             select(UserModel).where(UserModel.is_active == True)
         )
         active_users = users.scalars().all()
         
         now_data = datetime.now()
+        logger.debug('active_users')
         for user in active_users:
 
             refresh_token = await get_refresh_token_data(session, user)
@@ -28,8 +30,11 @@ async def disable_users(session: AsyncSession):
                 if hours_since_last_activity >= 24:
                     user.is_active = False
                     refresh_token.revoked = True
-
+                    disabled_count+=1
                     await session.commit()
+                    
+        return disabled_count
+    
     except Exception as e:
         logger.error(f"Error in disable_users: {e}")
         raise

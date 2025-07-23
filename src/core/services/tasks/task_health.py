@@ -1,7 +1,7 @@
 import logging
 import asyncio
 
-from src.core.services.tasks.celery import celery
+from src.core.services.tasks.celery_app import app
 from src.core.services.cache.redis import manager
 from src.core.dependencies.db_injection import db_helper
 
@@ -12,12 +12,12 @@ async def db_check():
     async with db_helper.async_session() as db_session:
         return db_session
 
-@celery.task
+@app.task
 def healthcheck():
     try:
         db_ok = asyncio.run(db_check())
         redis_ok = manager.redis
-        celery_ok = celery
+        celery_ok = app
         if all([db_ok, redis_ok, celery_ok]):
             logger.info('Health check successful')
             return {
