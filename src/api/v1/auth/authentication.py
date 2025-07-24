@@ -92,7 +92,7 @@ async def handle_login(
         if not tokens:
             return await render_login_form(
                 request, 
-                errors=f'Invalid credentials. Attempts left {settings.redis.cache_auth_attempts-attempts_expired[1] if attempts_expired else ''}', 
+                errors=f"Invalid credentials. Attempts left {settings.redis.cache_auth_attempts-attempts_expired[1] if attempts_expired else ''}", 
                 form_data=form_data
             )
         
