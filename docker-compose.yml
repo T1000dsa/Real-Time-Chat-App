@@ -70,7 +70,7 @@ services:
   celery_worker:
     build: .
     user: "1000:1000"  # Run as UID 1000 (non-root)
-    command: celery -A src.core.services.tasks.celery_app worker -P eventlet -c 4 -l INFO
+    command: celery -A src.core.services.tasks.celery_app worker -P solo -l INFO
     volumes:
       - .:/app
     depends_on:

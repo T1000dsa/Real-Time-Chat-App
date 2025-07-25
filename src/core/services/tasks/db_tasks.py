@@ -1,5 +1,4 @@
 import logging
-import asyncio
 from contextlib import asynccontextmanager
 from celery import current_task
 from src.core.dependencies.db_injection import db_helper
@@ -11,26 +10,25 @@ logger = logging.getLogger(__name__)
 
 @app.task(bind=True)
 def disable_inactive_users_task(self):
-    """Celery task wrapper with proper async handling"""
+    """Synchronous wrapper for async operations with gevent"""
+    import asyncio
+    
     try:
-        # Create new event loop for this task
+        # Create new event loop for this greenlet
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
-        try:
-            # Process users in batches to avoid memory issues
-            result = loop.run_until_complete(_process_users_batch())
-            return {"status": "success", "processed": result}
-        finally:
-            # Clean up async resources
-            loop.run_until_complete(db_helper.dispose())
-            loop.close()
+        # Run the async code
+        result = loop.run_until_complete(_async_disable_users())
+        return {"status": "success", "processed": result}
     except Exception as e:
-        logger.error(f"Task failed: {str(e)}")
+        logger.error(f"Task failed: {str(e)}", exc_info=True)
         return {"status": "error", "message": str(e)}
-    
-async def _process_users_batch():
-    """Process users in a managed session"""
+    finally:
+        loop.close()
+
+async def _async_disable_users():
+    """Actual async implementation"""
     async with db_helper.async_session() as session:
         await disable_users(session)
         return True

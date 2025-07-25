@@ -22,7 +22,6 @@ RUN poetry config virtualenvs.create false && \
 # Copy the rest of the files
 COPY . .
 
-RUN pip install celery-pool-asyncio
 
 COPY .env .env
 
