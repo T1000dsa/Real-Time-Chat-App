@@ -35,4 +35,4 @@ How to launch this project? / Как запустить этот проект?
     alembic revision --autogenerate -m "init"
     alembic upgrade head
 
-5. poetry run uvicorn main:app --reload
+5. bash start_dev.sh
