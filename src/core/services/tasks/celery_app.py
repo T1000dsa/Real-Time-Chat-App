@@ -4,7 +4,7 @@ from src.core.config.config import settings
 
 
 app = Celery(
-    'periodic_tasks',
+    __name__,
     broker=f'redis://{settings.redis.host}:{settings.redis.port}/0',
     backend=f'redis://{settings.redis.host}:{settings.redis.port}/0',
     include=[

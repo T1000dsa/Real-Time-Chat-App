@@ -84,10 +84,15 @@ async def render_profile_form(request: Request, user: UserModel):
     return response
 
 @time_checker
-async def render_mfa_form(request: Request):
+async def render_mfa_form(request: Request, redirect:bool=False):
+
+    cont = "Please, provide OTP-code."
+    if not redirect:
+        cont+='QR-code was sent on your email, please check!'
+
     prepared_data = {
         "title": "Login",
-        "content":"Please, provide OTP-code. QR-code was sent on your email, please check!",
+        "content":cont,
     }
     
     template_response_body_data = await prepare_template(

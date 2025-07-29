@@ -20,8 +20,12 @@ router = APIRouter(prefix=main_prefix, tags=['auth'])
 @router.get('/MFA_login')
 async def get_MFA_login(
     request:Request,
+    login = Query(None),
+    password = Query(None),
+    redirect = Query(None),
     ):
-    return await render_mfa_form(request)
+    logger.debug(f"{login=} {password=}")
+    return await render_mfa_form(request, redirect)
             
 @router.post('/MFA_login')
 async def get_MFA_login(
@@ -29,10 +33,11 @@ async def get_MFA_login(
     auth_service: AuthDependency,
     login = Query(None),
     password = Query(None),
+    redirect = Query(None),
     OPT: str = Form(None),
     
     ):
-    logger.debug(f"{OPT=} {login=} {password=}")
+    logger.debug(f"{OPT=} {login=} {password=} {redirect=}")
     logger.debug(OPT==None)
 
     tokens = await auth_service.authenticate_user(
@@ -99,7 +104,7 @@ async def handle_login(
         user = await auth_service._user._repo.get_user_for_auth(auth_service.session, login)
         
         if user.otp_enabled:
-            response = RedirectResponse(url=f'{main_prefix}/MFA_login?login={login}&password={password}', status_code=302)
+            response = RedirectResponse(url=f'{main_prefix}/MFA_login?login={login}&password={password}&redirect=True', status_code=302)
             return response
         
         else:
