@@ -16,6 +16,6 @@ else:
     logger.debug(f'{env_file} file was created from {env_example_file}')
     
     if sys.platform == 'win32':
-        result = subprocess.run(['bash', 'migrations.sh'], capture_output=True, text=True)
+        result = subprocess.run(['powershell', '.\\migrations.sh'], capture_output=True, text=True)
     else:
         result = subprocess.run(['./migrations.sh'], capture_output=True, text=True)

@@ -1,4 +1,5 @@
 from celery import Celery
+from datetime import timedelta
 
 from src.core.config.config import settings
 
@@ -36,10 +37,10 @@ app.conf.update(
 app.conf.beat_schedule = {
     'healthcheck-every-60-seconds': {
         'task': 'src.core.services.tasks.task_health.healthcheck',
-        'schedule': 60.0,
+        'schedule': timedelta(minutes=1),
     },
     'disable-inactive-users-hourly': {
         'task': 'src.core.services.tasks.db_tasks.disable_inactive_users_task',
-        'schedule': 60.0,
+        'schedule': timedelta(minutes=1),
     },
 }
