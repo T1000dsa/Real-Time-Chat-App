@@ -1,8 +1,9 @@
+import eventlet
+eventlet.monkey_patch()
+
 from celery import Celery
 from datetime import timedelta
-
 from src.core.config.config import settings
-
 
 app = Celery(
     __name__,
@@ -14,13 +15,10 @@ app = Celery(
         'src.core.services.tasks.db_tasks'
     ]
 )
- 
 
-# Async configuration
+# General configuration
 app.conf.worker_concurrency = 4
-app.conf.worker_prefetch_multiplier = 1
-app.conf.worker_pool = 'asyncio'  
-
+app.conf.worker_proc_alive_timeout = 30
 
 # Task configuration
 app.conf.update(

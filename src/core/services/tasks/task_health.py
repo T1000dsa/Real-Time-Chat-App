@@ -1,25 +1,43 @@
 import logging
-import asyncio
-
 from src.core.services.tasks.celery_app import app
-from src.core.services.cache.redis import manager
 from src.core.dependencies.db_injection import db_helper
-
+import redis
 
 logger = logging.getLogger(__name__)
 
-async def db_check():
-    async with db_helper.async_session() as db_session:
-        return db_session
-
-@app.task
-def healthcheck():
+@app.task(bind=True)
+def healthcheck(self):
+    """Eventlet-compatible health check"""
     try:
-        db_ok = asyncio.run(db_check())
-        redis_ok = manager.redis
-        celery_ok = app
-        if all([db_ok, redis_ok, celery_ok]):
-            logger.info('Health check successful')
+        # Import eventlet's patched versions
+        from eventlet import sleep
+        from eventlet.asyncio import asyncio
+        
+        # Create new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # Check database connection
+        async def db_check():
+            try:
+                async with db_helper.async_session() as session:
+                    await session.execute("SELECT 1")
+                return True
+            except Exception:
+                return False
+        
+        # Check Redis connection
+        def redis_check():
+            try:
+                r = redis.Redis(host='redis', port=6379)
+                return r.ping()
+            except Exception:
+                return False
+        
+        db_status = loop.run_until_complete(db_check())
+        redis_status = redis_check()
+        
+        if db_status and redis_status:
             return {
                 'status': 200,
                 'message': 'Health check successful',
@@ -30,10 +48,17 @@ def healthcheck():
                 }
             }
         else:
-            raise Exception("Some components are not healthy")
-        
+            return {
+                'status': 500,
+                'message': 'Health check failed',
+                'components': {
+                    'database': db_status,
+                    'redis': redis_status,
+                    'celery': True
+                }
+            }
     except Exception as e:
-        logger.error(f'Health check failed: {str(e)}')
+        logger.error(f"Health check error: {str(e)}")
         return {
             'status': 500,
             'error': str(e),
