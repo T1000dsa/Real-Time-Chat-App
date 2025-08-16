@@ -70,7 +70,7 @@ services:
   celery_worker:
     build: .
     user: "1000:1000"  # Run as UID 1000 (non-root)
-    command: celery -A src.core.services.tasks.celery_app worker --loglevel=info -P eventlet -c 4
+    command: celery -A src.core.services.tasks.celery_app worker --loglevel=info
     volumes:
       - .:/app
     depends_on:
@@ -85,6 +85,37 @@ services:
     depends_on:
       - redis
       - celery_worker
+
+  taskiq_worker:
+    build: .
+    user: "1000:1000"
+    command: taskiq worker -w 1 src.core.services.tasks.taskiq_broker:broker --log-level=INFO
+    environment:
+      - DB_HOST=db
+      - POSTGRES_USER=${FAST__DB__USER}
+      - POSTGRES_PASSWORD=${FAST__DB__PASSWORD}
+      - POSTGRES_DB=${FAST__DB__NAME}
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+
+  taskiq_scheduler:
+    build: .
+    user: "1000:1000"
+    command: taskiq scheduler src.core.services.tasks.taskiq_broker:scheduler --log-level=DEBUG 
+    environment:
+      - DB_HOST=db
+      - POSTGRES_USER=${FAST__DB__USER}
+      - POSTGRES_PASSWORD=${FAST__DB__PASSWORD}
+      - POSTGRES_DB=${FAST__DB__NAME}
+      - TZ=UTC
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - taskiq_worker
 
 
 volumes:

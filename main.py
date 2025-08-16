@@ -16,6 +16,7 @@ from src.core.middleware.middleware import init_token_refresh_middleware
 from src.core.services.cache.redis import ConnectionManager as redis_conmanager
 from src.core.services.chat.infrastructure.services.RoomService import RoomService
 from src.core.services.chat.infrastructure.services.ConnectionManager import ConnectionManager
+from src.core.services.tasks.db_tasks import disable_inactive_users
 
 
 from src.api.v1.endpoints.healthcheck import router as heath_router

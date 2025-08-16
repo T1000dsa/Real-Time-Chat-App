@@ -76,7 +76,7 @@ async def handle_login(
 ):
     """Handle POST requests for login form submission"""
 
-    form_data = {'login': login, 'password': password}
+    form_data = {'login': login}
     attempts_expired = await check_login_attempts(user_identifier=login)
 
     logger.debug(form_data)

@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 from celery import Celery
 from datetime import timedelta
 from src.core.config.config import settings
@@ -12,7 +9,7 @@ app = Celery(
     include=[
         'src.core.services.tasks.task_health',
         'src.core.services.tasks.email_task',
-        'src.core.services.tasks.db_tasks'
+         # 'src.core.services.tasks.db_tasks'
     ]
 )
 
@@ -37,8 +34,12 @@ app.conf.beat_schedule = {
         'task': 'src.core.services.tasks.task_health.healthcheck',
         'schedule': timedelta(minutes=1),
     },
-    'disable-inactive-users-hourly': {
+    
+}
+
+"""
+'disable-inactive-users-hourly': {
         'task': 'src.core.services.tasks.db_tasks.disable_inactive_users_task',
         'schedule': timedelta(minutes=1),
     },
-}
+"""

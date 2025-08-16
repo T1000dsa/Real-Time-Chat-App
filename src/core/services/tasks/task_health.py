@@ -1,7 +1,9 @@
 import logging
+import redis
+from sqlalchemy import text
+
 from src.core.services.tasks.celery_app import app
 from src.core.dependencies.db_injection import db_helper
-import redis
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +23,10 @@ def healthcheck(self):
         async def db_check():
             try:
                 async with db_helper.async_session() as session:
-                    await session.execute("SELECT 1")
+                    await session.execute(text("SELECT 1"))
                 return True
-            except Exception:
+            except Exception as err:
+                logger.error(err)
                 return False
         
         # Check Redis connection
