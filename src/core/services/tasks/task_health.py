@@ -12,24 +12,7 @@ def healthcheck(self):
     """Eventlet-compatible health check"""
     try:
         # Import eventlet's patched versions
-        from eventlet import sleep
-        from eventlet.asyncio import asyncio
-        
-        # Create new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Check database connection
-        async def db_check():
-            try:
-                async with db_helper.async_session() as session:
-                    await session.execute(text("SELECT 1"))
-                return True
-            except Exception as err:
-                logger.error(err)
-                return False
-        
-        # Check Redis connection
+
         def redis_check():
             try:
                 r = redis.Redis(host='redis', port=6379)
@@ -37,25 +20,12 @@ def healthcheck(self):
             except Exception:
                 return False
         
-        db_status = loop.run_until_complete(db_check())
         redis_status = redis_check()
         
-        if db_status and redis_status:
-            return {
-                'status': 200,
-                'message': 'Health check successful',
-                'components': {
-                    'database': True,
-                    'redis': True,
-                    'celery': True
-                }
-            }
-        else:
-            return {
+        return {
                 'status': 500,
                 'message': 'Health check failed',
                 'components': {
-                    'database': db_status,
                     'redis': redis_status,
                     'celery': True
                 }

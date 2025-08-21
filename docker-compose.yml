@@ -89,7 +89,7 @@ services:
   taskiq_worker:
     build: .
     user: "1000:1000"
-    command: taskiq worker -w 1 src.core.services.tasks.taskiq_broker:broker --log-level=INFO
+    command: taskiq worker -w 1 src.core.services.tasks.taskiq_broker:broker --log-level=INFO --fs-discover
     environment:
       - DB_HOST=db
       - POSTGRES_USER=${FAST__DB__USER}

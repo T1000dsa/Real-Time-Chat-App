@@ -21,11 +21,15 @@ async def disable_inactive_users():
     try:
         async with db_helper.async_session() as session:
             result = await disable_users(session)
-        logger.info(f"Task completed: {result}")
+        logger.info(
+            f"users_disabled: {result[0]} "
+            f"users_count: {result[1]}"
+            )
         return {
             'status': 200, 
             'message': 'Users disabled successfully', 
-            'user_counts': result
+            'users_disabled': result[0],
+            'users_count':result[1]
         }
     except Exception as e:
         logger.error(f"Task failed: {str(e)}")

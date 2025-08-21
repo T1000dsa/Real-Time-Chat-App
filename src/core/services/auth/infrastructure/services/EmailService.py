@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import smtplib
 import logging
-import base64
 
 from src.core.services.auth.domain.interfaces import EmailRepo
 from src.utils.time_check import time_checker
@@ -52,15 +51,15 @@ class EmailService(EmailRepo):
 
     @time_checker
     async def send_email(self, recipient: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
-        """Public API now delegates to Celery"""
+        """Public API now delegates to TaskIQ"""
         if not self.settings.EMAIL_ENABLED:
             logger.warning("Email sending disabled in settings")
             return False
 
-        # Fire-and-forget Celery task
-        logger.debug("Before celery task")
-        send_email_task.delay(recipient, subject, body, html_body)
-        return True
+        # Fire-and-forget TaskIQ task (no need to wait for result)
+        logger.debug("Before taskiq task")
+        await send_email_task.kiq(recipient, subject, body, html_body)
+        return True  # Assume success since we're firing and forgetting
 
     # Other methods remain the same...
     @time_checker
@@ -77,7 +76,7 @@ class EmailService(EmailRepo):
         subject = "Please scan this QR code"
         body = f"Scan this QR code for MFA for {EXTERNAL_BASE_URL}"
         
-        # Create proper HTML with embedded image  # <img src="data:image/png;base64,{image}" width:200px; height:200px;">
+        # Create proper HTML with embedded image
         html_body = f"""
         <html>
             <body>

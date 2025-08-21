@@ -1,4 +1,3 @@
-from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from datetime import datetime
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 async def disable_users(session: AsyncSession):
     try:
         disabled_count = 0
+        users_count = 0
 
         users = await session.execute(
             select(UserModel).where(UserModel.is_active == True)
@@ -26,6 +26,7 @@ async def disable_users(session: AsyncSession):
 
             refresh_token = await get_refresh_token_data(session, user)
             if refresh_token:
+                users_count+=1
                 hours_since_last_activity = (now_data - refresh_token.expires_at).total_seconds() / 3600
                 if hours_since_last_activity >= 24:
                     user.is_active = False
@@ -33,7 +34,7 @@ async def disable_users(session: AsyncSession):
                     disabled_count+=1
                     await session.commit()
                     
-        return disabled_count
+        return disabled_count, users_count
     
     except Exception as e:
         logger.error(f"Error in disable_users: {e}")
