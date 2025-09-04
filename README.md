@@ -1,6 +1,6 @@
-This is a real-time implementation of FastApi / Это реализация чата в реальном времени на FastApi
+This is a real-time chat implementation of FastApi
 
-Technology stack / Стек технологий :
+Technology stack :
 FastAPI
 SQLAlchemy
 poetry
@@ -10,29 +10,21 @@ pydantic
 websockets
 jinja2
 redis
+taskiq
 
-How to launch this project? / Как запустить этот проект?
+How to launch this project?
 
 1. Clone the repo.
-    git clone https://github.com/T1000dsa/Real-Time-Chat-App.git  # Pulling repository / скачиваем репозиторий
+    git clone https://github.com/T1000dsa/Real-Time-Chat-App.git  # Pulling repository
 
 2. Installing dependencies. 
 
-    pip install poetry  # poetry install with pip / скачиваем poetry с pip
+    pip install poetry  # poetry install with pip
 
-    poetry install  # install main dependecies with poetry / скачиваем основные зависимости с poetry 
+    poetry install  # install main dependecies with poetry
 
-3. Set the environment vars.
-    rename .env.example into .env
-    If you want to change some variables just follow sctructure where: FAST - is the begin of the var, __ - is a delimeter. So it's should looks like that:
-    FAST__DB__NAME
+3. scripts/start_dev | bash scripts/start_dev.sh - creating migrations and new containers. 
 
-    Переименуй .env.example в .env
-    Если ты хочешь изменить какие-либо параметры, просто следуй структуре, где: FAST - начало переменной, __ - разделитель. Это должно выглядеть примерно так:
-    FAST__DB__NAME
+4. scripts/stop_dev | bash scripts/stop_dev.sh - stopping all containers.
 
-4. Migrations.
-    alembic revision --autogenerate -m "init"
-    alembic upgrade head
-
-5. bash start_dev.sh
+5. scripts/purge_dev | scripts/purge_dev.sh - purging all docker data, except images.

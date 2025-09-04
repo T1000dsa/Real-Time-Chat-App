@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 import logging
 
-from src.core.dependencies.db_injection import DBDI, db_helper
+from src.core.dependencies.db_injection import db_helper
 from src.core.services.tasks.task_health import healthcheck
-from src.core.services.database.orm.celery_orm import health_db
+from core.services.database.orm.task_orm import health_db
 
 router = APIRouter(tags=['api'])
 logger = logging.getLogger(__name__)

@@ -1,14 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, update, delete, join
-from typing import Union, Optional
+from typing import Optional
 import logging
 
 from src.core.services.auth.domain.models.user import UserModel
 from src.core.schemas.user import UserSchema
 from src.core.services.auth.infrastructure.services.Bcryptprovider import Bcryptprovider
 from src.utils.time_check import time_checker
-from src.core.exceptions.auth_exception import false_activation_user_exception
 
 
 logger = logging.getLogger(__name__)

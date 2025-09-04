@@ -2,7 +2,7 @@ import logging
 
 from src.core.dependencies.db_injection import db_helper
 from src.core.services.tasks.taskiq_broker import broker
-from src.core.services.database.orm.celery_orm import disable_users
+from core.services.database.orm.task_orm import disable_users
 
 logger = logging.getLogger(__name__)
 

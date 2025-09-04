@@ -95,3 +95,5 @@ if __name__ == '__main__':
         reload=not settings.is_prod(),
         log_config=LOG_CONFIG
     )
+    
+    from src.core.services.tasks.email_task import send_email_task

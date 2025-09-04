@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy import select, update, delete, join
-from typing import Union, Optional, Type
+from sqlalchemy import select, delete
+from typing import Optional
 import logging
 
 from src.utils.time_check import time_checker

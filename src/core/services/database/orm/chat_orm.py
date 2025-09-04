@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import logging
 
-
 from src.core.services.database.models.chat import MessageModel, DirectModel
 from src.core.schemas.message_shema import MessageSchema, MessabeSchemaBase, DirectMessage, DirectScheme
 from src.utils.time_check import time_checker

@@ -100,9 +100,15 @@ async def get_current_user(
 async def get_current_active_user(
     current_user: UserModel = Depends(get_current_user)
 ) -> UserModel:
-    if not current_user.is_active:
+    
+    if current_user is None:
         logger.info('Someone tried to reach endpoint')
         raise inactive_user_exception
+
+    elif not current_user.is_active:
+        logger.info('Someone tried to reach endpoint')
+        raise inactive_user_exception
+    
     return current_user
 
 # Auth provider factory for middleware

@@ -39,10 +39,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      celery_worker:
-        condition: service_started
-      celery_beat:
-        condition: service_started
+
     env_file:
       - .env  # Explicitly load the .env file
     environment:
@@ -67,29 +64,10 @@ services:
     volumes:
       - redis_data:/data
 
-  celery_worker:
-    build: .
-    user: "1000:1000"  # Run as UID 1000 (non-root)
-    command: celery -A src.core.services.tasks.celery_app worker --loglevel=info
-    volumes:
-      - .:/app
-    depends_on:
-      - redis
-
-  celery_beat:
-    build: .
-    user: "1000:1000"  # Run as UID 1000 (non-root)
-    command: celery -A src.core.services.tasks.celery_app beat --loglevel=info
-    volumes:
-      - .:/app
-    depends_on:
-      - redis
-      - celery_worker
-
   taskiq_worker:
     build: .
     user: "1000:1000"
-    command: taskiq worker -w 1 src.core.services.tasks.taskiq_broker:broker --log-level=INFO --fs-discover
+    command: bash -c "python -c 'from src.core.services.tasks import send_email_task' && taskiq worker -w 1 src.core.services.tasks.taskiq_broker:broker --log-level=INFO --fs-discover"
     environment:
       - DB_HOST=db
       - POSTGRES_USER=${FAST__DB__USER}

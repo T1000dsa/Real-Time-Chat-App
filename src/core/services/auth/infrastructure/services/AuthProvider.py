@@ -59,7 +59,6 @@ class AuthProvider(AuthRepository):
         # Fisrt step
         user:UserModel = await self._repo.get_user_for_auth(self.session, login)
         if not user:
-            #raise KeyError('user not found') # Temporary. Raise with expept factory, not from credential 
             logger.debug("User wasn't find by login")
             raise credentials_exception
         logger.debug(f'{user.login} verificated')
@@ -67,7 +66,6 @@ class AuthProvider(AuthRepository):
         # Second step
         res = await self._hash.verify_password(password, user.password)
         if not res:
-            #raise KeyError('username or password not matched') # actually username(login) is matched, just making vague response for security
             logger.debug("User password is invalid")
             raise credentials_exception
         logger.debug(f'{user.login} password is correct')

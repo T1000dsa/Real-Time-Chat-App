@@ -2,12 +2,10 @@ import logging
 import redis
 from sqlalchemy import text
 
-from src.core.services.tasks.celery_app import app
-from src.core.dependencies.db_injection import db_helper
 
 logger = logging.getLogger(__name__)
 
-@app.task(bind=True)
+
 def healthcheck(self):
     """Eventlet-compatible health check"""
     try:

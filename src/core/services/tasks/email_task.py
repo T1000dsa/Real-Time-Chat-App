@@ -4,7 +4,7 @@ from email.mime.multipart import MIMEMultipart
 import logging
 from typing import Optional
 
-from src.core.services.tasks.taskiq_broker import broker
+from .taskiq_broker import broker
 from src.core.config.config import settings
 
 
