@@ -46,9 +46,27 @@ async def not_found_exception_handler(request: Request, exc: HTTPException):
         status_code=404
     )
 
+async def critical_error_exception_handler(request: Request, exc: HTTPException):
+    prepared_data = {
+        "title": "Something happened on our side!",
+        "content": "Please be patient! We're already working at the problem!"
+    }
+    
+    template_response_body_data = await prepare_template(data=prepared_data)
+
+    return templates.TemplateResponse(
+        request=request,
+        name='500.html',
+        context=template_response_body_data,
+        status_code=500
+    )
+
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 404:
         return await not_found_exception_handler(request, exc)
+    if exc.status_code == 500:
+        return await critical_error_exception_handler(request, exc)
+    
     return JSONResponse(
         status_code=exc.status_code,
         content={"message": exc.detail},

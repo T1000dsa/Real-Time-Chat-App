@@ -8,7 +8,7 @@ from src.utils.time_check import time_checker
 async def prepare_template(
         data:dict[str, Any], 
         additional_data:dict[str, Any] = None
-        ):
+        ) -> dict[str, Any]:
     
     template_data = TemplateData(**data).model_dump(exclude_none=True)
     if additional_data:

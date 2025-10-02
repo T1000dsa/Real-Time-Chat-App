@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from logging.config import dictConfig
@@ -8,7 +10,7 @@ import uvicorn
 import logging
 
 
-from src.core.exceptions.except_catcher import not_found_exception_handler
+from src.core.exceptions.except_catcher import not_found_exception_handler, critical_error_exception_handler
 from src.core.config.config import settings, media_root, static_root
 from src.core.config.logger import LOG_CONFIG
 from src.core.dependencies.db_injection import db_helper
@@ -84,8 +86,22 @@ app.include_router(direct_msg_router)
 app.include_router(foreign_api_router)
 app.include_router(MFA_router)
 
-app.add_exception_handler(404, not_found_exception_handler)
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return await not_found_exception_handler(request, exc)
+    elif exc.status_code == 500:
+        return await critical_error_exception_handler(request, exc)
+    # Handle other HTTP exceptions if needed
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+    )
 
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    # This catches ALL unhandled exceptions (true 500 errors)
+    return await critical_error_exception_handler(request, exc)
 
 if __name__ == '__main__':
     uvicorn.run(
