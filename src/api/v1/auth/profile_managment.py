@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form, UploadFile, File, Depends
+from fastapi import APIRouter, Form, UploadFile, File
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 import logging
@@ -49,7 +49,7 @@ async def update_profile(
         # Handle file upload (you'll need to implement this)
         photo_url = await handle_photo_upload(photo, curr_user)
         
-    await auth._user.update_profile_user(curr_user.id, {'email':email,'photo':photo_url, 'login':login})
+    await auth._user.update_profile_user(auth.session, curr_user.id, {'email':email,'photo':photo_url, 'login':login})
     return RedirectResponse(f'{main_prefix}/profile', status_code=303)
 
 @time_checker

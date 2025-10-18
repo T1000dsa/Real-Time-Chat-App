@@ -30,6 +30,7 @@ from src.api.v1.auth.webauthn import router as foreign_api_router
 from src.api.v1.auth.MFA import router as MFA_router
 
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.create_directories()

@@ -1,8 +1,14 @@
+from fastapi.requests import Request
 from typing import Any
+import logging
+
 
 from src.core.schemas.template_schema import TemplateData
 from src.frontend.menu.urls import menu_items, choice_from_menu
 from src.utils.time_check import time_checker
+
+logger = logging.getLogger(__name__)
+
 
 @time_checker
 async def prepare_template(
