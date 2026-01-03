@@ -106,7 +106,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 if __name__ == '__main__':
     uvicorn.run(
-        app,
+        "main:app",
         host=settings.run.host,
         port=settings.run.port,
         reload=not settings.is_prod(),
